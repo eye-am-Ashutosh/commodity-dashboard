@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Commodity Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F2F4F6; --surface:#FFFFFF; --surface2:#F7F9FA; --ink:#14202B; --ink2:#465462; --muted:#76838F;
+  --line:#DCE2E7; --grid:#ECEFF2; --accent:#0F5FA6; --accent-ink:#FFFFFF; --accent-soft:#E3EEF8;
+  --up:#1A7F46; --down:#BF3328; --up-bg:#E5F4EA; --down-bg:#FBE9E7;
+  --copper:#B4552D; --lithium:#6B55C8; --wti:#2F6FB3; --brent:#C0800F;
+  --s1:#16877F; --s2:#C23B72; --s3:#5E7F12; --s4:#8A5A2B; --s5:#4459B8; --s6:#A63FA6;
+  --shadow:0 1px 2px rgba(20,32,43,.06),0 4px 16px rgba(20,32,43,.05);
+  --display:"Archivo",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;
+  --bg:#0E141A; --surface:#161F28; --surface2:#1B2530; --ink:#E5EBF0; --ink2:#A7B4C0; --muted:#7D8B98;
+  --line:#2A3642; --grid:#212C37; --accent:#4F95DD; --accent-ink:#0B1016; --accent-soft:#1A2B3C;
+  --up:#4CC47E; --down:#F06A5E; --up-bg:#15301F; --down-bg:#3A1A18;
+  --copper:#E0835A; --lithium:#A18FF2; --wti:#6FA8E8; --brent:#E6B04A;
+  --s1:#3CC2B6; --s2:#F0709E; --s3:#A2C94A; --s4:#D09A62; --s5:#8196F0; --s6:#D883D8;
+  --shadow:none;
+}}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E141A; --surface:#161F28; --surface2:#1B2530; --ink:#E5EBF0; --ink2:#A7B4C0; --muted:#7D8B98;
+  --line:#2A3642; --grid:#212C37; --accent:#4F95DD; --accent-ink:#0B1016; --accent-soft:#1A2B3C;
+  --up:#4CC47E; --down:#F06A5E; --up-bg:#15301F; --down-bg:#3A1A18;
+  --copper:#E0835A; --lithium:#A18FF2; --wti:#6FA8E8; --brent:#E6B04A;
+  --s1:#3CC2B6; --s2:#F0709E; --s3:#A2C94A; --s4:#D09A62; --s5:#8196F0; --s6:#D883D8;
+  --shadow:none;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--display);font-size:14px;line-height:1.45;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 20px}
+header.top h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em;text-wrap:balance}
+header.top p{margin:2px 0 0;color:var(--ink2);font-size:13px}
+.asof{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+@media (max-width:480px){.tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 10px;text-align:left;display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:start;position:relative;transition:border-color .15s}
+.tile:hover{border-color:var(--muted)}
+.tile[aria-pressed="true"]{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c),var(--shadow)}
+.tile .nm{font-weight:700;font-size:14px;display:flex;align-items:center;gap:7px}
+.tile .nm i{width:9px;height:9px;border-radius:50%;background:var(--c);display:inline-block}
+.tile .unit{grid-column:1/-1;font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.tile .px{font-size:20px;font-weight:600;grid-column:1}
+.tile .chg{font-size:12px;align-self:center}
+.tile svg{grid-column:1/-1;width:100%;height:34px;display:block;margin-top:4px}
+
+.pill{display:inline-flex;align-items:center;gap:3px;padding:1px 7px;border-radius:999px;font-family:var(--mono);font-size:12px;font-weight:500;white-space:nowrap}
+.pill.up{color:var(--up);background:var(--up-bg)}
+.pill.down{color:var(--down);background:var(--down-bg)}
+.pill.flat{color:var(--ink2);background:var(--surface2)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+.panel-head{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding:16px 18px 6px}
+.panel-head h2{margin:0;font-size:20px;font-weight:800}
+.panel-head .sub{color:var(--muted);font-size:12px}
+.bigpx{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-top:4px}
+.bigpx .v{font-size:30px;font-weight:600;letter-spacing:-.02em}
+.bigpx .u{color:var(--muted);font-size:12px}
+
+.ranges{display:flex;flex-wrap:wrap;gap:2px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:3px}
+.ranges button{border:0;background:transparent;padding:5px 10px;border-radius:6px;font-weight:600;font-size:12.5px;color:var(--ink2)}
+.ranges button:hover{color:var(--ink)}
+.ranges button[aria-pressed="true"]{background:var(--surface);color:var(--accent);box-shadow:0 0 0 1px var(--line)}
+
+.stats{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:10px}
+.stats div{padding:9px 14px;border-left:1px solid var(--line);min-width:0}
+.stats div:first-child{border-left:0}
+.stats dt{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:0}
+.stats dd{margin:2px 0 0;font-family:var(--mono);font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stats dd.up{color:var(--up)} .stats dd.down{color:var(--down)}
+@media (max-width:900px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}.stats div:nth-child(5){border-left:0}.stats div:nth-child(n+5){border-top:1px solid var(--line)}}
+
+.chart-wrap{position:relative;padding:8px 6px 4px 14px}
+.legend{display:flex;gap:16px;padding:10px 18px 0;font-size:12px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:14px;height:2px;border-radius:1px;background:var(--c)}
+#chart{display:block;width:100%;touch-action:pan-y;user-select:none}
+#chart text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.14);min-width:140px;z-index:2}
+.tip b{display:block;font-weight:600;color:var(--ink2);font-size:11px;margin-bottom:3px}
+.tip .row{display:flex;justify-content:space-between;gap:14px;font-family:var(--mono)}
+.tip .row span:first-child{display:inline-flex;align-items:center;gap:6px;color:var(--ink2);font-family:var(--display)}
+.tip .row i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.note{margin:0;padding:4px 18px 14px;color:var(--muted);font-size:12px;max-width:95ch}
+
+.tbl-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:14px 18px 10px}
+.tbl-head h3{margin:0;font-size:15px;font-weight:700}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:6px 12px;border-radius:7px;font-weight:600;font-size:12.5px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn:disabled{opacity:.5;cursor:default}
+
+.xl{overflow:auto;max-height:560px;border-top:1px solid var(--line)}
+table.sheet{border-collapse:collapse;width:100%;min-width:640px;font-size:12.5px}
+.sheet caption{caption-side:top;text-align:left;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:14px;padding:7px 12px}
+.sheet th{position:sticky;top:0;background:var(--surface2);color:var(--ink);font-weight:700;font-size:11.5px;text-align:right;padding:6px 10px;border:1px solid var(--line);white-space:nowrap;z-index:1}
+.sheet th:nth-child(-n+2){text-align:left}
+.sheet td{border:1px solid var(--line);padding:4px 10px;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.sheet td:nth-child(-n+2){text-align:left}
+.sheet td.sn{color:var(--muted);width:56px}
+.sheet td.up{color:var(--up)} .sheet td.down{color:var(--down)} .sheet td.na{color:var(--muted)}
+.sheet tbody tr:hover td{background:var(--accent-soft)}
+.src{font-family:var(--display);font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.src.manual{color:var(--accent);font-weight:700}
+.rm{border:0;background:none;color:var(--muted);padding:0 0 0 6px;font-size:13px;line-height:1}
+.rm:hover{color:var(--down)}
+
+.drawer{border-top:1px solid var(--line);padding:14px 18px;display:grid;gap:10px;background:var(--surface2)}
+.drawer label{font-size:12px;font-weight:600;color:var(--ink2);display:grid;gap:4px}
+.drawer input,.drawer textarea{font:inherit;font-family:var(--mono);font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink);width:100%}
+.drawer textarea{min-height:130px;resize:vertical}
+.drawer .row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.drawer .row label{flex:1 1 160px}
+.msg{font-size:12.5px;color:var(--ink2);margin:0}
+.msg.err{color:var(--down)}
+.foot{color:var(--muted);font-size:11.5px;text-align:center}
+.drow{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}
+.drow div{display:grid;gap:1px}
+.drow b{font-size:13px}
+.drow span{font-size:12px;color:var(--ink2)}
+.btn.danger{color:var(--down);border-color:var(--down)}
+.btn.danger.solid{background:var(--down);color:var(--surface)}
+.confirm{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;margin-top:10px;padding:10px 12px;border:1px solid var(--down);border-radius:8px;background:var(--down-bg);font-size:12.5px}
+.tile .px.empty{font-family:var(--display);font-size:14px;font-weight:500;color:var(--muted);padding-block:6px 18px}
+.sheet td.empty-row{text-align:center;font-family:var(--display);color:var(--ink2);padding:28px 10px;white-space:normal}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.tools{display:flex;gap:4px;align-items:center}
+.ibtn{display:inline-grid;place-items:center;min-width:32px;height:32px;padding:0 8px;border:1px solid var(--line);background:var(--surface);border-radius:8px;color:var(--ink2)}
+.ibtn:hover{color:var(--ink);border-color:var(--muted)}
+.ibtn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.ibtn.txt{font-size:12px;font-weight:600;color:var(--accent)}
+#chart{cursor:crosshair}
+#nav{display:block;width:100%;margin-top:6px;touch-action:none;user-select:none}
+.panel.present{position:fixed;inset:0;z-index:50;border-radius:0;overflow:auto;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);border:0}
+.panel.present .panel-head{padding-top:22px}
+.panel.present .bigpx .v{font-size:40px}
+body.noscroll{overflow:hidden}
+.count{font-size:12px;font-weight:500;color:var(--muted);margin-left:6px}
+.info{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);background:var(--surface);font-family:Georgia,serif;font-style:italic;font-size:12px;font-weight:700;color:var(--ink2);padding:0;line-height:1}
+.info[aria-expanded="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+#mPop{flex-basis:100%;margin:0;font-size:12.5px;color:var(--ink2);max-width:120ch}
+.hright{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.tile.add{border-style:dashed;background:transparent;display:grid;grid-template-columns:1fr;place-content:center;justify-items:center;gap:2px;min-height:112px;color:var(--accent);text-align:center}
+.tile.add span{font-weight:700;font-size:14px}
+.tile.add small{font-size:11.5px;color:var(--muted)}
+.tile.add:hover{border-color:var(--accent);background:var(--accent-soft)}
+.tile .nm{min-width:0}
+.tile .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.dropping .wrap{outline:2px dashed var(--accent);outline-offset:6px;border-radius:12px}
+.imp-tbl{overflow-x:auto;border-top:1px solid var(--line)}
+.imp-tbl table.sheet{min-width:760px}
+.imp-tbl td{font-family:var(--display);text-align:left!important;vertical-align:middle;padding:6px 10px}
+.imp-tbl th{text-align:left!important}
+.imp-tbl input[type=text],.imp-tbl select{font:inherit;font-size:13px;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);width:100%;min-width:120px}
+.imp-tbl input.u{min-width:90px}
+.imp-tbl input:disabled,.imp-tbl select:disabled{background:var(--surface2);color:var(--muted)}
+.imp-tbl .sh b{display:block;font-size:13px}.imp-tbl .sh span,.imp-tbl .rc span{display:block;font-size:11px;color:var(--muted)}
+.imp-tbl .rc{font-family:var(--mono);white-space:nowrap}
+.imp-tbl tr.off td{color:var(--muted)}
+.imp-tbl .why{font-family:var(--display);font-size:12px;color:var(--muted)}
+.imp-foot{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--line)}
+.imp-foot .msg{flex:1 1 200px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.2);max-width:calc(100% - 32px)}
+.method{display:grid;gap:8px;padding:10px 18px;border-top:1px solid var(--line);background:var(--surface2)}
+.method .ctl{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center}
+.method .ctl > span{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.method select{font:inherit;font-size:12.5px;font-weight:600;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--surface);color:var(--ink)}
+.method label{display:inline-flex;gap:8px;align-items:center;font-size:12.5px;color:var(--ink2)}
+.method p{margin:0;font-size:12.5px;color:var(--ink2);max-width:120ch}
+.method p b{color:var(--ink);font-weight:600}
+.formulas{display:grid;gap:3px;padding:0 18px 16px;font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
+.formulas b{font-family:var(--display);font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:2px}
+.sheet tbody tr[data-i]{cursor:pointer}
+.sheet tbody tr[data-i]:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.sheet tbody tr[aria-expanded="true"] td{background:var(--accent-soft)}
+.sheet td.ov{background:var(--surface2);font-weight:600}
+.sheet td.ov i{font-style:normal;color:var(--accent);margin-left:4px;font-size:11px}
+.sheet tr.detail td{text-align:left;white-space:normal;background:var(--surface2);padding:8px 12px}
+.sheet tr.detail div{display:grid;gap:3px;font-size:11.5px;color:var(--ink2);justify-items:start}
+.sheet tr.detail .btn{margin-top:6px;font-family:var(--display)}
+.pct-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:600px){.pct-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.check{display:inline-flex!important;grid-auto-flow:column;align-items:center;gap:8px!important}
+.check input{width:auto}
+@media (max-width:520px){.method,.formulas{padding-inline:14px}header.top h1{font-size:20px}.bigpx .v{font-size:24px}.panel-head{padding:14px 14px 6px}.tbl-head,.drawer{padding-inline:14px}.note{padding-inline:14px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="top">
+    <h1>Commodity Tracker</h1>
+    <div class="hright"><span class="asof" id="asof"></span><button class="btn" id="bSaveFile" type="button" hidden title="Download a copy of this dashboard with all your data inside, ready to share">Save dashboard file</button><button class="btn primary" id="bImport" type="button">Import Excel</button></div>
+  </header>
+
+  <div class="tiles" id="tiles" role="group" aria-label="Sections"></div>
+  <input type="file" id="fileIn" accept=".xlsx,.xlsm,.xls,.csv" multiple hidden>
+
+  <section class="panel imp" id="imp" hidden aria-labelledby="impT">
+    <div class="tbl-head"><h3 id="impT">Import from Excel</h3><div class="actions"><button class="btn" id="impMore" type="button">Add another file</button><button class="btn" id="impClose" type="button">Close</button></div></div>
+    <div id="impBody"></div>
+    <div class="imp-foot">
+      <label class="check" id="impPctWrap" hidden><input id="impPct" type="checkbox" checked> Keep the Day / Week / Month / Year % values from the sheets</label>
+      <p class="msg" id="impMsg"></p>
+      <button class="btn primary" id="impGo" type="button" disabled>Import</button>
+    </div>
+  </section>
+
+  <section class="panel" id="cpanel" aria-labelledby="ptitle">
+    <div class="panel-head">
+      <div>
+        <h2 id="ptitle">—</h2>
+        <div class="bigpx"><span class="v num" id="pbig">—</span><span id="pchg"></span><span class="u" id="punit"></span></div>
+      </div>
+      <div class="toolbar">
+        <div class="ranges" id="ranges" role="group" aria-label="Time range"></div>
+        <div class="tools" role="group" aria-label="Zoom">
+          <button class="ibtn" id="zOut" type="button" title="Zoom out" aria-label="Zoom out"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9" /></svg></button>
+          <button class="ibtn" id="zIn" type="button" title="Zoom in" aria-label="Zoom in"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8h9M8 3.5v9" /></svg></button>
+          <button class="ibtn txt" id="zReset" type="button" hidden title="Back to the selected range">Reset</button>
+          <button class="ibtn" id="zFull" type="button" title="Full screen" aria-label="Full screen" aria-pressed="false"></button>
+        </div>
+      </div>
+    </div>
+    <dl class="stats" id="stats"></dl>
+    <div class="legend" id="legend" hidden></div>
+    <div class="chart-wrap" id="cwrap">
+      <svg id="chart" role="img" aria-label="Price chart"></svg>
+      <div class="tip" id="tip" hidden></div>
+      <svg id="nav" aria-label="Overview — drag to move or resize the zoom window"></svg>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="ttitle">
+    <div class="tbl-head">
+      <h3><span id="ttitle">Price history</span> <span class="count" id="tcount"></span></h3>
+      <div class="actions">
+        <button class="btn" id="bSort" type="button">Newest first</button>
+        <button class="btn" id="bAdd" type="button">Add entry</button>
+        <button class="btn" id="bPaste" type="button">Paste from Excel</button>
+        <button class="btn" id="bCopy" type="button">Copy for Excel</button>
+        <button class="btn" id="bData" type="button">Manage data</button>
+        <button class="btn primary" id="bCsv" type="button" hidden>Download CSV</button>
+      </div>
+    </div>
+    <div class="method" aria-label="How % change is calculated">
+      <div class="ctl">
+        <span>% change</span>
+        <div class="ranges" id="mMethod" role="group" aria-label="Method"><button type="button" data-m="calendar">Calendar</button><button type="button" data-m="sessions">Sessions</button></div>
+        <label for="mFy">FY starts <select id="mFy"></select></label>
+        <button class="info" id="mInfo" type="button" aria-expanded="false" aria-controls="mPop" title="How % change is calculated">i</button>
+      <p id="mPop" hidden></p>
+    </div>
+    </div>
+    <form class="drawer" id="fAdd" hidden>
+      <div class="row">
+        <label>Date<input id="addDate" type="date" required></label>
+        <label><span id="addLbl">Price</span><input id="addPrice" type="text" inputmode="decimal" required placeholder="e.g. 133150"></label>
+      </div>
+      <div class="pct-grid">
+        <label>Day %<input id="add_day" type="text" inputmode="decimal" placeholder="auto"></label>
+        <label>Week %<input id="add_week" type="text" inputmode="decimal" placeholder="auto"></label>
+        <label>Month %<input id="add_month" type="text" inputmode="decimal" placeholder="auto"></label>
+        <label>Year %<input id="add_year" type="text" inputmode="decimal" placeholder="auto"></label>
+      </div>
+      <div class="row">
+        <button class="btn primary" type="submit">Save entry</button>
+        <button class="btn" type="button" data-close>Cancel</button>
+      </div>
+      <p class="msg" id="addMsg"></p>
+    </form>
+    <form class="drawer" id="fPaste" hidden>
+      <label for="pasteBox">Paste rows straight from your sheet — S. No, Date, Price, Day, Week, Month, Year (S. No and the % columns are optional)
+        <textarea id="pasteBox" spellcheck="false" placeholder="1	20-05-26	¥ 179,000	#VALUE!		4.07%	183.90%&#10;2	21-05-26	¥ 182,000	1.68%		6.43%	188.66%&#10;2026-05-22	178000"></textarea>
+      </label>
+      <label class="check" id="pastePctWrap" hidden><input id="pastePct" type="checkbox" checked> Keep the Day / Week / Month / Year % values from the sheet exactly as written (blank or #VALUE! cells are calculated)</label>
+      <div class="row" style="justify-content:space-between">
+        <p class="msg" id="pasteMsg">Dates as dd-mm-yy, dd/mm/yyyy or yyyy-mm-dd.</p>
+        <div class="actions"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="submit" id="pasteGo" disabled>Import rows</button></div>
+      </div>
+    </form>
+    <div class="drawer" id="fData" hidden>
+      <div id="dataBody"></div>
+      <div class="row" style="justify-content:space-between"><p class="msg" id="dataMsg" aria-live="polite"></p><button class="btn" type="button" data-close>Close</button></div>
+    </div>
+    <div class="xl">
+      <table class="sheet" id="sheet">
+        <caption id="cap"></caption>
+        <thead><tr><th>S. No</th><th>Date</th><th id="thPx">Price</th><th>Day</th><th>Week</th><th>Month</th><th>Year</th><th>Source</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <footer class="foot">Built-in sections: Yahoo Finance futures closes (copper, WTI, Brent) · your sheet and Trading Economics (lithium). ✎ = value entered by you.</footer>
+</div>
+
+<script id="seed" type="application/json">{"copper":[["2021-09-27",4.2935],["2021-09-28",4.245],["2021-09-29",4.2],["2021-09-30",4.09],["2021-10-01",4.1935],["2021-10-04",4.2465],["2021-10-05",4.202],["2021-10-06",4.157],["2021-10-07",4.251],["2021-10-08",4.283],["2021-10-11",4.3745],["2021-10-12",4.329],["2021-10-13",4.5205],["2021-10-14",4.6315],["2021-10-15",4.734],["2021-10-18",4.7305],["2021-10-19",4.714],["2021-10-20",4.756],["2021-10-21",4.5865],["2021-10-22",4.526],["2021-10-25",4.5515],["2021-10-26",4.4865],["2021-10-27",4.387],["2021-10-28",4.4375],["2021-10-29",4.3755],["2021-11-01",4.402],["2021-11-02",4.374],["2021-11-03",4.326],["2021-11-04",4.326],["2021-11-05",4.349],["2021-11-08",4.405],["2021-11-09",4.38],["2021-11-10",4.328],["2021-11-11",4.4045],["2021-11-12",4.4555],["2021-11-15",4.407],["2021-11-16",4.3585],["2021-11-17",4.273],["2021-11-18",4.31],["2021-11-19",4.4085],["2021-11-22",4.3955],["2021-11-23",4.4235],["2021-11-24",4.458],["2021-11-26",4.2815],["2021-11-29",4.337],["2021-11-30",4.278],["2021-12-01",4.2475],["2021-12-02",4.299],["2021-12-03",4.2665],["2021-12-06",4.337],["2021-12-07",4.338],["2021-12-08",4.391],["2021-12-09",4.33],["2021-12-10",4.283],["2021-12-13",4.28],["2021-12-14",4.254],["2021-12-15",4.1795],["2021-12-16",4.3005],["2021-12-17",4.291],["2021-12-20",4.288],["2021-12-21",4.338],["2021-12-22",4.3895],["2021-12-23",4.387],["2021-12-27",4.465],["2021-12-28",4.42],["2021-12-29",4.402],["2021-12-30",4.3845],["2021-12-31",4.455],["2022-01-03",4.4145],["2022-01-04",4.466],["2022-01-05",4.4045],["2022-01-06",4.348],["2022-01-07",4.403],["2022-01-10",4.3445],["2022-01-11",4.4205],["2022-01-12",4.564],["2022-01-13",4.534],["2022-01-14",4.4115],["2022-01-18",4.376],["2022-01-19",4.4625],["2022-01-20",4.5765],["2022-01-21",4.5125],["2022-01-24",4.403],["2022-01-25",4.443],["2022-01-26",4.5045],["2022-01-27",4.413],["2022-01-28",4.303],["2022-01-31",4.318],["2022-02-01",4.429],["2022-02-02",4.491],["2022-02-03",4.4665],["2022-02-04",4.4835],["2022-02-07",4.4615],["2022-02-08",4.4595],["2022-02-09",4.6005],["2022-02-10",4.6575],["2022-02-11",4.505],["2022-02-14",4.5075],["2022-02-15",4.5315],["2022-02-16",4.5405],["2022-02-17",4.525],["2022-02-18",4.5195],["2022-02-22",4.51],["2022-02-23",4.4815],["2022-02-24",4.454],["2022-02-25",4.472],["2022-02-28",4.4445],["2022-03-01",4.5865],["2022-03-02",4.6555],["2022-03-03",4.7715],["2022-03-04",4.929],["2022-03-07",4.722],["2022-03-08",4.7005],["2022-03-09",4.564],["2022-03-10",4.6435],["2022-03-11",4.616],["2022-03-14",4.5125],["2022-03-15",4.5015],["2022-03-16",4.588],["2022-03-17",4.6905],["2022-03-18",4.7305],["2022-03-21",4.7015],["2022-03-22",4.689],["2022-03-23",4.7625],["2022-03-24",4.729],["2022-03-25",4.686],["2022-03-28",4.714],["2022-03-29",4.7165],["2022-03-30",4.7395],["2022-03-31",4.743],["2022-04-01",4.6825],["2022-04-04",4.7765],["2022-04-05",4.791],["2022-04-06",4.7335],["2022-04-07",4.695],["2022-04-08",4.72],["2022-04-11",4.6285],["2022-04-12",4.704],["2022-04-13",4.707],["2022-04-14",4.717],["2022-04-18",4.796],["2022-04-19",4.714],["2022-04-20",4.6495],["2022-04-21",4.7035],["2022-04-22",4.5825],["2022-04-25",4.449],["2022-04-26",4.44],["2022-04-27",4.4545],["2022-04-28",4.4135],["2022-04-29",4.395],["2022-05-02",4.2555],["2022-05-03",4.271],["2022-05-04",4.3285],["2022-05-05",4.285],["2022-05-06",4.2615],["2022-05-09",4.193],["2022-05-10",4.1545],["2022-05-11",4.2125],["2022-05-12",4.105],["2022-05-13",4.1805],["2022-05-16",4.1965],["2022-05-17",4.2395],["2022-05-18",4.182],["2022-05-19",4.285],["2022-05-20",4.281],["2022-05-23",4.3475],["2022-05-24",4.3255],["2022-05-25",4.277],["2022-05-26",4.255],["2022-05-27",4.304],["2022-05-31",4.295],["2022-06-01",4.33],["2022-06-02",4.554],["2022-06-03",4.4775],["2022-06-06",4.4395],["2022-06-07",4.4395],["2022-06-08",4.4585],["2022-06-09",4.389],["2022-06-10",4.301],["2022-06-13",4.2165],["2022-06-14",4.1615],["2022-06-15",4.1675],["2022-06-16",4.112],["2022-06-17",4.0175],["2022-06-21",4.043],["2022-06-22",3.9515],["2022-06-23",3.7585],["2022-06-24",3.76],["2022-06-27",3.779],["2022-06-28",3.784],["2022-06-29",3.779],["2022-06-30",3.7145],["2022-07-01",3.619],["2022-07-05",3.425],["2022-07-06",3.418],["2022-07-07",3.582],["2022-07-08",3.532],["2022-07-11",3.4375],["2022-07-12",3.2965],["2022-07-13",3.3255],["2022-07-14",3.2105],["2022-07-15",3.2345],["2022-07-18",3.348],["2022-07-19",3.2915],["2022-07-20",3.3295],["2022-07-21",3.302],["2022-07-22",3.3485],["2022-07-25",3.351],["2022-07-26",3.3825],["2022-07-27",3.4295],["2022-07-28",3.475],["2022-07-29",3.584],["2022-08-01",3.552],["2022-08-02",3.5245],["2022-08-03",3.4695],["2022-08-04",3.483],["2022-08-05",3.553],["2022-08-08",3.5875],["2022-08-09",3.5925],["2022-08-10",3.6555],["2022-08-11",3.7105],["2022-08-12",3.676],["2022-08-15",3.629],["2022-08-16",3.6365],["2022-08-17",3.598],["2022-08-18",3.6465],["2022-08-19",3.6835],["2022-08-22",3.6705],["2022-08-23",3.7045],["2022-08-24",3.6605],["2022-08-25",3.7105],["2022-08-26",3.7115],["2022-08-29",3.6265],["2022-08-30",3.545],["2022-08-31",3.5185],["2022-09-01",3.4145],["2022-09-02",3.4215],["2022-09-06",3.469],["2022-09-07",3.438],["2022-09-08",3.536],["2022-09-09",3.581],["2022-09-12",3.6255],["2022-09-13",3.581],["2022-09-14",3.5455],["2022-09-15",3.5235],["2022-09-16",3.561],["2022-09-19",3.5575],["2022-09-20",3.548],["2022-09-21",3.512],["2022-09-22",3.4985],["2022-09-23",3.3715],["2022-09-26",3.3135],["2022-09-27",3.323],["2022-09-28",3.382],["2022-09-29",3.44],["2022-09-30",3.442],["2022-10-03",3.458],["2022-10-04",3.518],["2022-10-05",3.5325],["2022-10-06",3.475],["2022-10-07",3.4125],["2022-10-10",3.4535],["2022-10-11",3.478],["2022-10-12",3.4445],["2022-10-13",3.4675],["2022-10-14",3.4505],["2022-10-17",3.4555],["2022-10-18",3.4065],["2022-10-19",3.3605],["2022-10-20",3.451],["2022-10-21",3.523],["2022-10-24",3.4795],["2022-10-25",3.4505],["2022-10-26",3.6295],["2022-10-27",3.6255],["2022-10-28",3.466],["2022-10-31",3.4135],["2022-11-01",3.5095],["2022-11-02",3.5055],["2022-11-03",3.4565],["2022-11-04",3.7145],["2022-11-07",3.6295],["2022-11-08",3.7055],["2022-11-09",3.7415],["2022-11-10",3.796],["2022-11-11",3.951],["2022-11-14",3.855],["2022-11-15",3.8395],["2022-11-16",3.788],["2022-11-17",3.6895],["2022-11-18",3.632],["2022-11-21",3.5715],["2022-11-22",3.6145],["2022-11-23",3.6175],["2022-11-25",3.6265],["2022-11-28",3.6105],["2022-11-29",3.63],["2022-11-30",3.7295],["2022-12-01",3.814],["2022-12-02",3.848],["2022-12-05",3.7895],["2022-12-06",3.8115],["2022-12-07",3.8555],["2022-12-08",3.8805],["2022-12-09",3.876],["2022-12-12",3.7985],["2022-12-13",3.8395],["2022-12-14",3.875],["2022-12-15",3.763],["2022-12-16",3.7615],["2022-12-19",3.783],["2022-12-20",3.7975],["2022-12-21",3.806],["2022-12-22",3.7515],["2022-12-23",3.803],["2022-12-27",3.8335],["2022-12-28",3.832],["2022-12-29",3.821],["2022-12-30",3.8055],["2023-01-03",3.766],["2023-01-04",3.7395],["2023-01-05",3.818],["2023-01-06",3.9085],["2023-01-09",4.0185],["2023-01-10",4.067],["2023-01-11",4.1545],["2023-01-12",4.186],["2023-01-13",4.2075],["2023-01-17",4.215],["2023-01-18",4.2285],["2023-01-19",4.2265],["2023-01-20",4.2485],["2023-01-23",4.254],["2023-01-24",4.2455],["2023-01-25",4.24],["2023-01-26",4.267],["2023-01-27",4.224],["2023-01-30",4.2035],["2023-01-31",4.2285],["2023-02-01",4.111],["2023-02-02",4.094],["2023-02-03",4.063],["2023-02-06",4.0435],["2023-02-07",4.0885],["2023-02-08",4.0435],["2023-02-09",4.1055],["2023-02-10",4.0275],["2023-02-13",4.087],["2023-02-14",4.11],["2023-02-15",4.052],["2023-02-16",4.1655],["2023-02-17",4.114],["2023-02-21",4.2345],["2023-02-22",4.2025],["2023-02-23",4.073],["2023-02-24",3.955],["2023-02-27",4.009],["2023-02-28",4.0975],["2023-03-01",4.168],["2023-03-02",4.084],["2023-03-03",4.078],["2023-03-06",4.1005],["2023-03-07",3.9865],["2023-03-08",4.0415],["2023-03-09",4.0545],["2023-03-10",4.0455],["2023-03-13",4.0695],["2023-03-14",4.0105],["2023-03-15",3.8565],["2023-03-16",3.8855],["2023-03-17",3.9135],["2023-03-20",3.9755],["2023-03-21",4.0185],["2023-03-22",4.0685],["2023-03-23",4.146],["2023-03-24",4.1015],["2023-03-27",4.1045],["2023-03-28",4.112],["2023-03-29",4.115],["2023-03-30",4.0905],["2023-03-31",4.1045],["2023-04-03",4.0595],["2023-04-04",3.9835],["2023-04-05",3.998],["2023-04-06",4.026],["2023-04-10",3.9865],["2023-04-11",4.0245],["2023-04-12",4.0845],["2023-04-13",4.124],["2023-04-14",4.1075],["2023-04-17",4.066],["2023-04-18",4.0895],["2023-04-19",4.072],["2023-04-20",4.022],["2023-04-21",3.98],["2023-04-24",3.953],["2023-04-25",3.846],["2023-04-26",3.85],["2023-04-27",3.8645],["2023-04-28",3.87],["2023-05-01",3.917],["2023-05-02",3.848],["2023-05-03",3.8315],["2023-05-04",3.85],["2023-05-05",3.8715],["2023-05-08",3.918],["2023-05-09",3.889],["2023-05-10",3.828],["2023-05-11",3.6975],["2023-05-12",3.7165],["2023-05-15",3.7375],["2023-05-16",3.6545],["2023-05-17",3.743],["2023-05-18",3.6815],["2023-05-19",3.7225],["2023-05-22",3.674],["2023-05-23",3.6415],["2023-05-24",3.5535],["2023-05-25",3.5805],["2023-05-26",3.6735],["2023-05-30",3.658],["2023-05-31",3.631],["2023-06-01",3.7065],["2023-06-02",3.7225],["2023-06-05",3.7625],["2023-06-06",3.767],["2023-06-07",3.7545],["2023-06-08",3.7965],["2023-06-09",3.789],["2023-06-12",3.7505],["2023-06-13",3.8285],["2023-06-14",3.866],["2023-06-15",3.8965],["2023-06-16",3.8845],["2023-06-20",3.8785],["2023-06-21",3.911],["2023-06-22",3.8885],["2023-06-23",3.806],["2023-06-26",3.7865],["2023-06-27",3.7815],["2023-06-28",3.7205],["2023-06-29",3.6775],["2023-06-30",3.741],["2023-07-03",3.779],["2023-07-05",3.7535],["2023-07-06",3.72],["2023-07-07",3.767],["2023-07-10",3.7715],["2023-07-11",3.7535],["2023-07-12",3.842],["2023-07-13",3.9295],["2023-07-14",3.922],["2023-07-17",3.832],["2023-07-18",3.816],["2023-07-19",3.7995],["2023-07-20",3.8175],["2023-07-21",3.803],["2023-07-24",3.8405],["2023-07-25",3.902],["2023-07-26",3.8905],["2023-07-27",3.8635],["2023-07-28",3.917],["2023-07-31",3.9945],["2023-08-01",3.8935],["2023-08-02",3.8275],["2023-08-03",3.876],["2023-08-04",3.845],["2023-08-07",3.813],["2023-08-08",3.748],["2023-08-09",3.7675],["2023-08-10",3.751],["2023-08-11",3.7145],["2023-08-14",3.7245],["2023-08-15",3.6615],["2023-08-16",3.6515],["2023-08-17",3.6855],["2023-08-18",3.699],["2023-08-21",3.712],["2023-08-22",3.7505],["2023-08-23",3.8035],["2023-08-24",3.7675],["2023-08-25",3.76],["2023-08-28",3.754],["2023-08-29",3.793],["2023-08-30",3.785],["2023-08-31",3.7725],["2023-09-01",3.8125],["2023-09-05",3.811],["2023-09-06",3.7485],["2023-09-07",3.726],["2023-09-08",3.6805],["2023-09-11",3.77],["2023-09-12",3.752],["2023-09-13",3.756],["2023-09-14",3.7825],["2023-09-15",3.7635],["2023-09-18",3.7415],["2023-09-19",3.714],["2023-09-20",3.7465],["2023-09-21",3.6665],["2023-09-22",3.6655],["2023-09-25",3.6495],["2023-09-26",3.625],["2023-09-27",3.627],["2023-09-28",3.6945],["2023-09-29",3.726],["2023-10-02",3.632],["2023-10-03",3.6155],["2023-10-04",3.584],["2023-10-05",3.547],["2023-10-06",3.6245],["2023-10-09",3.6425],["2023-10-10",3.632],["2023-10-11",3.614],["2023-10-12",3.594],["2023-10-13",3.58],["2023-10-16",3.587],["2023-10-17",3.5755],["2023-10-18",3.582],["2023-10-19",3.5915],["2023-10-20",3.542],["2023-10-23",3.573],["2023-10-24",3.61],["2023-10-25",3.572],["2023-10-26",3.5685],["2023-10-27",3.634],["2023-10-30",3.6495],["2023-10-31",3.6415],["2023-11-01",3.645],["2023-11-02",3.667],["2023-11-03",3.6745],["2023-11-06",3.7095],["2023-11-07",3.67],["2023-11-08",3.628],["2023-11-09",3.635],["2023-11-10",3.5835],["2023-11-13",3.6625],["2023-11-14",3.6825],["2023-11-15",3.7175],["2023-11-16",3.7045],["2023-11-17",3.7375],["2023-11-20",3.8125],["2023-11-21",3.8145],["2023-11-22",3.7665],["2023-11-23",3.779],["2023-11-24",3.7965],["2023-11-27",3.7625],["2023-11-28",3.801],["2023-11-29",3.786],["2023-11-30",3.829],["2023-12-01",3.909],["2023-12-04",3.8205],["2023-12-05",3.7725],["2023-12-06",3.7165],["2023-12-07",3.7845],["2023-12-08",3.82],["2023-12-11",3.78],["2023-12-12",3.786],["2023-12-13",3.786],["2023-12-14",3.8885],["2023-12-15",3.885],["2023-12-18",3.848],["2023-12-19",3.896],["2023-12-20",3.9015],["2023-12-21",3.9085],["2023-12-22",3.8955],["2023-12-26",3.8955],["2023-12-27",3.9435],["2023-12-28",3.913],["2023-12-29",3.8805],["2024-01-02",3.869],["2024-01-03",3.8475],["2024-01-04",3.831],["2024-01-05",3.7945],["2024-01-08",3.7995],["2024-01-09",3.7485],["2024-01-10",3.781],["2024-01-11",3.7765],["2024-01-12",3.74],["2024-01-16",3.7665],["2024-01-17",3.7325],["2024-01-18",3.745],["2024-01-19",3.787],["2024-01-22",3.764],["2024-01-23",3.7905],["2024-01-24",3.8825],["2024-01-25",3.8655],["2024-01-26",3.8505],["2024-01-29",3.873],["2024-01-30",3.9065],["2024-01-31",3.9025],["2024-02-01",3.8525],["2024-02-02",3.8215],["2024-02-05",3.772],["2024-02-06",3.7825],["2024-02-07",3.7375],["2024-02-08",3.7055],["2024-02-09",3.686],["2024-02-12",3.7285],["2024-02-13",3.714],["2024-02-14",3.7005],["2024-02-15",3.7565],["2024-02-16",3.838],["2024-02-20",3.8665],["2024-02-21",3.8745],["2024-02-22",3.8975],["2024-02-23",3.882],["2024-02-26",3.824],["2024-02-27",3.831],["2024-02-28",3.8275],["2024-02-29",3.8345],["2024-03-01",3.855],["2024-03-04",3.852],["2024-03-05",3.844],["2024-03-06",3.8705],["2024-03-07",3.9195],["2024-03-08",3.885],["2024-03-11",3.9225],["2024-03-12",3.925],["2024-03-13",4.0525],["2024-03-14",4.037],["2024-03-15",4.1125],["2024-03-18",4.1145],["2024-03-19",4.0585],["2024-03-20",4.0385],["2024-03-21",4.0465],["2024-03-22",3.996],["2024-03-25",4.007],["2024-03-26",3.996],["2024-03-27",3.9925],["2024-03-28",4.0035],["2024-04-01",4.046],["2024-04-02",4.07],["2024-04-03",4.193],["2024-04-04",4.2465],["2024-04-05",4.2395],["2024-04-08",4.277],["2024-04-09",4.286],["2024-04-10",4.282],["2024-04-11",4.252],["2024-04-12",4.2575],["2024-04-15",4.379],["2024-04-16",4.3055],["2024-04-17",4.3425],["2024-04-18",4.4405],["2024-04-19",4.502],["2024-04-22",4.5005],["2024-04-23",4.4905],["2024-04-24",4.467],["2024-04-25",4.5705],["2024-04-26",4.569],["2024-04-29",4.659],["2024-04-30",4.5645],["2024-05-01",4.5525],["2024-05-02",4.494],["2024-05-03",4.5735],["2024-05-06",4.6345],["2024-05-07",4.6255],["2024-05-08",4.562],["2024-05-09",4.6075],["2024-05-10",4.6935],["2024-05-13",4.8045],["2024-05-14",4.9535],["2024-05-15",4.9695],["2024-05-16",4.892],["2024-05-17",5.057],["2024-05-20",5.0875],["2024-05-21",5.119],["2024-05-22",4.8675],["2024-05-23",4.8165],["2024-05-24",4.7785],["2024-05-28",4.8755],["2024-05-29",4.8055],["2024-05-30",4.672],["2024-05-31",4.61],["2024-06-03",4.677],["2024-06-04",4.548],["2024-06-05",4.6195],["2024-06-06",4.691],["2024-06-07",4.4945],["2024-06-10",4.5565],["2024-06-11",4.523],["2024-06-12",4.5815],["2024-06-13",4.5075],["2024-06-14",4.551],["2024-06-17",4.5215],["2024-06-18",4.562],["2024-06-20",4.618],["2024-06-21",4.494],["2024-06-24",4.527],["2024-06-25",4.381],["2024-06-26",4.3675],["2024-06-27",4.3285],["2024-06-28",4.3905],["2024-07-01",4.4265],["2024-07-02",4.4295],["2024-07-03",4.541],["2024-07-05",4.6585],["2024-07-08",4.622],["2024-07-09",4.578],["2024-07-10",4.6075],["2024-07-11",4.5085],["2024-07-12",4.5985],["2024-07-15",4.529],["2024-07-16",4.444],["2024-07-17",4.399],["2024-07-18",4.266],["2024-07-19",4.219],["2024-07-22",4.1805],["2024-07-23",4.146],["2024-07-24",4.099],["2024-07-25",4.1125],["2024-07-26",4.1045],["2024-07-29",4.062],["2024-07-30",4.063],["2024-07-31",4.16],["2024-08-01",4.0665],["2024-08-02",4.084],["2024-08-05",3.984],["2024-08-06",4.0115],["2024-08-07",3.9375],["2024-08-08",3.945],["2024-08-09",3.98],["2024-08-12",4.055],["2024-08-13",4.036],["2024-08-14",4.025],["2024-08-15",4.139],["2024-08-16",4.1275],["2024-08-19",4.1665],["2024-08-20",4.1495],["2024-08-21",4.1815],["2024-08-22",4.141],["2024-08-23",4.1945],["2024-08-26",4.2115],["2024-08-27",4.2305],["2024-08-28",4.145],["2024-08-29",4.1475],["2024-08-30",4.145],["2024-09-03",4.032],["2024-09-04",4.0195],["2024-09-05",4.0775],["2024-09-06",4.0145],["2024-09-09",4.0845],["2024-09-10",4.0405],["2024-09-11",4.083],["2024-09-12",4.133],["2024-09-13",4.175],["2024-09-16",4.213],["2024-09-17",4.2135],["2024-09-18",4.238],["2024-09-19",4.286],["2024-09-20",4.2815],["2024-09-23",4.289],["2024-09-24",4.4295],["2024-09-25",4.428],["2024-09-26",4.581],["2024-09-27",4.541],["2024-09-30",4.496],["2024-10-01",4.5355],["2024-10-02",4.596],["2024-10-03",4.502],["2024-10-04",4.5225],["2024-10-07",4.519],["2024-10-08",4.412],["2024-10-09",4.355],["2024-10-10",4.385],["2024-10-11",4.4515],["2024-10-14",4.3635],["2024-10-15",4.3005],["2024-10-16",4.3315],["2024-10-17",4.2865],["2024-10-18",4.346],["2024-10-21",4.323],["2024-10-22",4.348],["2024-10-23",4.3045],["2024-10-24",4.3195],["2024-10-25",4.3395],["2024-10-28",4.332],["2024-10-29",4.3325],["2024-10-30",4.3275],["2024-10-31",4.3135],["2024-11-01",4.3475],["2024-11-04",4.407],["2024-11-05",4.4505],["2024-11-06",4.2225],["2024-11-07",4.41],["2024-11-08",4.2865],["2024-11-11",4.211],["2024-11-12",4.1195],["2024-11-13",4.066],["2024-11-14",4.073],["2024-11-15",4.051],["2024-11-18",4.108],["2024-11-19",4.13],["2024-11-20",4.1435],["2024-11-21",4.113],["2024-11-22",4.074],["2024-11-25",4.0915],["2024-11-26",4.039],["2024-11-27",4.067],["2024-11-29",4.0805],["2024-12-02",4.0755],["2024-12-03",4.146],["2024-12-04",4.142],["2024-12-05",4.135],["2024-12-06",4.1385],["2024-12-09",4.2235],["2024-12-10",4.2235],["2024-12-11",4.214],["2024-12-12",4.195],["2024-12-13",4.149],["2024-12-16",4.1435],["2024-12-17",4.0915],["2024-12-18",4.1],["2024-12-19",4.0205],["2024-12-20",4.041],["2024-12-23",4.023],["2024-12-24",4.0495],["2024-12-26",4.072],["2024-12-27",4.0625],["2024-12-30",4.0455],["2024-12-31",3.986],["2025-01-02",3.9885],["2025-01-03",4.0395],["2025-01-06",4.127],["2025-01-07",4.1605],["2025-01-08",4.2275],["2025-01-09",4.2795],["2025-01-10",4.2745],["2025-01-13",4.2955],["2025-01-14",4.3105],["2025-01-15",4.3595],["2025-01-16",4.4105],["2025-01-17",4.3375],["2025-01-21",4.311],["2025-01-22",4.2715],["2025-01-23",4.2995],["2025-01-24",4.29],["2025-01-27",4.2035],["2025-01-28",4.2205],["2025-01-29",4.2575],["2025-01-30",4.288],["2025-01-31",4.262],["2025-02-03",4.294],["2025-02-04",4.3425],["2025-02-05",4.4345],["2025-02-06",4.4535],["2025-02-07",4.5815],["2025-02-10",4.7005],["2025-02-11",4.5945],["2025-02-12",4.698],["2025-02-13",4.769],["2025-02-14",4.6565],["2025-02-18",4.585],["2025-02-19",4.557],["2025-02-20",4.608],["2025-02-21",4.56],["2025-02-24",4.517],["2025-02-25",4.486],["2025-02-26",4.542],["2025-02-27",4.58],["2025-02-28",4.5145],["2025-03-03",4.5765],["2025-03-04",4.5275],["2025-03-05",4.7665],["2025-03-06",4.779],["2025-03-07",4.683],["2025-03-10",4.6395],["2025-03-11",4.74],["2025-03-12",4.821],["2025-03-13",4.8985],["2025-03-14",4.8695],["2025-03-17",4.9335],["2025-03-18",4.993],["2025-03-19",5.076],["2025-03-20",5.085],["2025-03-21",5.0875],["2025-03-24",5.064],["2025-03-25",5.183],["2025-03-26",5.216],["2025-03-27",5.0975],["2025-03-28",5.1125],["2025-03-31",5.02],["2025-04-01",5.019],["2025-04-02",5.0235],["2025-04-03",4.811],["2025-04-04",4.3845],["2025-04-07",4.169],["2025-04-08",4.1275],["2025-04-09",4.1755],["2025-04-10",4.321],["2025-04-11",4.5075],["2025-04-14",4.6105],["2025-04-15",4.611],["2025-04-16",4.674],["2025-04-17",4.7315],["2025-04-21",4.721],["2025-04-22",4.8705],["2025-04-23",4.8355],["2025-04-24",4.85],["2025-04-25",4.8355],["2025-04-28",4.838],["2025-04-29",4.823],["2025-04-30",4.56],["2025-05-01",4.581],["2025-05-02",4.6275],["2025-05-05",4.655],["2025-05-06",4.735],["2025-05-07",4.6165],["2025-05-08",4.561],["2025-05-09",4.611],["2025-05-12",4.5785],["2025-05-13",4.6815],["2025-05-14",4.611],["2025-05-15",4.6445],["2025-05-16",4.5555],["2025-05-19",4.6335],["2025-05-20",4.6195],["2025-05-21",4.638],["2025-05-22",4.6485],["2025-05-23",4.8065],["2025-05-27",4.71],["2025-05-28",4.644],["2025-05-29",4.6535],["2025-05-30",4.6525],["2025-06-02",4.8345],["2025-06-03",4.8095],["2025-06-04",4.8645],["2025-06-05",4.9135],["2025-06-06",4.83],["2025-06-09",4.9095],["2025-06-10",4.884],["2025-06-11",4.801],["2025-06-12",4.8215],["2025-06-13",4.803],["2025-06-16",4.8265],["2025-06-17",4.8005],["2025-06-18",4.845],["2025-06-20",4.826],["2025-06-23",4.843],["2025-06-24",4.867],["2025-06-25",4.913],["2025-06-26",5.0655],["2025-06-27",5.0685],["2025-06-30",5.03],["2025-07-01",5.048],["2025-07-02",5.149],["2025-07-03",5.097],["2025-07-04",5.0185],["2025-07-07",4.9845],["2025-07-08",5.645],["2025-07-09",5.4435],["2025-07-10",5.548],["2025-07-11",5.562],["2025-07-14",5.515],["2025-07-15",5.546],["2025-07-16",5.4965],["2025-07-17",5.486],["2025-07-18",5.578],["2025-07-21",5.6105],["2025-07-22",5.697],["2025-07-23",5.795],["2025-07-24",5.777],["2025-07-25",5.7635],["2025-07-28",5.595],["2025-07-29",5.6035],["2025-07-30",5.57],["2025-07-31",4.3305],["2025-08-01",4.4125],["2025-08-04",4.415],["2025-08-05",4.364],["2025-08-06",4.391],["2025-08-07",4.3785],["2025-08-08",4.4555],["2025-08-11",4.4235],["2025-08-12",4.5085],["2025-08-13",4.482],["2025-08-14",4.4645],["2025-08-15",4.478],["2025-08-18",4.457],["2025-08-19",4.409],["2025-08-20",4.426],["2025-08-21",4.4315],["2025-08-22",4.4475],["2025-08-25",4.4665],["2025-08-26",4.4505],["2025-08-27",4.4145],["2025-08-28",4.4635],["2025-08-29",4.5185],["2025-09-02",4.5695],["2025-09-03",4.5585],["2025-09-04",4.488],["2025-09-05",4.4825],["2025-09-08",4.4905],["2025-09-09",4.501],["2025-09-10",4.55],["2025-09-11",4.5905],["2025-09-12",4.5885],["2025-09-15",4.6555],["2025-09-16",4.633],["2025-09-17",4.571],["2025-09-18",4.541],["2025-09-19",4.569],["2025-09-22",4.573],["2025-09-23",4.5845],["2025-09-24",4.7525],["2025-09-25",4.7],["2025-09-26",4.7155],["2025-09-29",4.841],["2025-09-30",4.805],["2025-10-01",4.8305],["2025-10-02",4.898],["2025-10-03",5.058],["2025-10-06",4.987],["2025-10-07",5.048],["2025-10-08",5.046],["2025-10-09",5.0755],["2025-10-10",4.8485],["2025-10-13",5.1005],["2025-10-14",4.9805],["2025-10-15",4.972],["2025-10-16",4.958],["2025-10-17",4.9315],["2025-10-20",4.998],["2025-10-21",4.93],["2025-10-22",4.961],["2025-10-23",5.082],["2025-10-24",5.0935],["2025-10-27",5.1405],["2025-10-28",5.1405],["2025-10-29",5.2335],["2025-10-30",5.078],["2025-10-31",5.0655],["2025-11-03",5.047],["2025-11-04",4.926],["2025-11-05",4.963],["2025-11-06",4.9455],["2025-11-07",4.938],["2025-11-10",5.087],["2025-11-11",5.0485],["2025-11-12",5.0895],["2025-11-13",5.0875],["2025-11-14",5.0495],["2025-11-17",5.0],["2025-11-18",4.9625],["2025-11-19",5.008],["2025-11-20",4.9595],["2025-11-21",5.0085],["2025-11-24",4.962],["2025-11-25",4.9995],["2025-11-26",5.1045],["2025-11-28",5.1855],["2025-12-01",5.219],["2025-12-02",5.161],["2025-12-03",5.308],["2025-12-04",5.2915],["2025-12-05",5.382],["2025-12-08",5.3645],["2025-12-09",5.2405],["2025-12-10",5.2755],["2025-12-11",5.427],["2025-12-12",5.2835],["2025-12-15",5.3385],["2025-12-16",5.287],["2025-12-17",5.3635],["2025-12-18",5.3665],["2025-12-19",5.4395],["2025-12-22",5.4375],["2025-12-23",5.476],["2025-12-24",5.4985],["2025-12-26",5.7665],["2025-12-29",5.4905],["2025-12-30",5.7275],["2025-12-31",5.63],["2026-01-02",5.64],["2026-01-05",5.9245],["2026-01-06",6.0105],["2026-01-07",5.809],["2026-01-08",5.7465],["2026-01-09",5.8555],["2026-01-12",5.985],["2026-01-13",5.97],["2026-01-14",6.009],["2026-01-15",5.948],["2026-01-16",5.7885],["2026-01-20",5.773],["2026-01-21",5.7295],["2026-01-22",5.7425],["2026-01-23",5.911],["2026-01-26",5.984],["2026-01-27",5.8285],["2026-01-28",5.8925],["2026-01-29",6.1755],["2026-01-30",5.897],["2026-02-02",5.8015],["2026-02-03",6.0625],["2026-02-04",5.826],["2026-02-05",5.799],["2026-02-06",5.8635],["2026-02-09",5.945],["2026-02-10",5.896],["2026-02-11",5.949],["2026-02-12",5.771],["2026-02-13",5.7925],["2026-02-17",5.633],["2026-02-18",5.7935],["2026-02-19",5.73],["2026-02-20",5.831],["2026-02-23",5.773],["2026-02-24",5.923],["2026-02-25",5.9795],["2026-02-26",5.947],["2026-02-27",6.0045],["2026-03-02",5.8945],["2026-03-03",5.7735],["2026-03-04",5.855],["2026-03-05",5.753],["2026-03-06",5.757],["2026-03-09",5.8005],["2026-03-10",5.904],["2026-03-11",5.8455],["2026-03-12",5.8245],["2026-03-13",5.7145],["2026-03-16",5.7905],["2026-03-17",5.7265],["2026-03-18",5.554],["2026-03-19",5.433],["2026-03-20",5.3425],["2026-03-23",5.4395],["2026-03-24",5.4225],["2026-03-25",5.529],["2026-03-26",5.4465],["2026-03-27",5.467],["2026-03-30",5.476],["2026-03-31",5.5875],["2026-04-01",5.624],["2026-04-02",5.563],["2026-04-06",5.5835],["2026-04-07",5.5445],["2026-04-08",5.7595],["2026-04-09",5.748],["2026-04-10",5.8705],["2026-04-13",5.976],["2026-04-14",6.0705],["2026-04-15",6.072],["2026-04-16",6.0665],["2026-04-17",6.1035],["2026-04-20",6.036],["2026-04-21",6.0015],["2026-04-22",6.12],["2026-04-23",6.0755],["2026-04-24",6.0235],["2026-04-27",6.018],["2026-04-28",5.9145],["2026-04-29",5.8785],["2026-04-30",5.926],["2026-05-01",5.932],["2026-05-04",5.795],["2026-05-05",5.943],["2026-05-06",6.1365],["2026-05-07",6.1275],["2026-05-08",6.249],["2026-05-11",6.4135],["2026-05-12",6.485],["2026-05-13",6.6355],["2026-05-14",6.5675],["2026-05-15",6.2515],["2026-05-18",6.272],["2026-05-19",6.165],["2026-05-20",6.2905],["2026-05-21",6.257],["2026-05-22",6.342],["2026-05-26",6.361],["2026-05-27",6.305],["2026-05-28",6.396],["2026-05-29",6.3595],["2026-06-01",6.524],["2026-06-02",6.6495],["2026-06-03",6.481],["2026-06-04",6.511],["2026-06-05",6.2635],["2026-06-08",6.3295],["2026-06-09",6.3025],["2026-06-10",6.249],["2026-06-11",6.259],["2026-06-12",6.4305],["2026-06-15",6.4825],["2026-06-16",6.489],["2026-06-17",6.4815],["2026-06-18",6.3745],["2026-06-22",6.3565],["2026-06-23",6.141],["2026-06-24",5.943],["2026-06-25",6.0705],["2026-06-26",6.1415],["2026-06-29",6.0975],["2026-06-30",6.1925],["2026-07-01",6.1235],["2026-07-02",6.1145],["2026-07-06",6.178],["2026-07-07",6.1715],["2026-07-08",6.0545],["2026-07-09",6.215],["2026-07-10",6.2335],["2026-07-13",6.233],["2026-07-14",6.33],["2026-07-15",6.2935],["2026-07-16",6.296],["2026-07-17",6.22],["2026-07-20",6.299],["2026-07-21",6.511],["2026-07-22",6.451],["2026-07-23",6.305],["2026-07-24",6.32],["2026-07-27",6.339],["2026-07-28",6.322],["2026-07-29",6.2735],["2026-07-30",6.4445],["2026-07-31",6.436],["2026-08-03",6.514],["2026-08-04",6.6185],["2026-08-05",6.703],["2026-08-06",6.687],["2026-08-07",6.5705],["2026-08-10",6.5945],["2026-08-11",6.612],["2026-08-12",6.597],["2026-08-13",6.5925],["2026-08-14",6.5995],["2026-08-17",6.604],["2026-08-18",6.4825],["2026-08-19",6.4875],["2026-08-20",6.46],["2026-08-21",6.5795],["2026-08-24",6.599],["2026-08-25",6.7095],["2026-08-26",6.5945],["2026-08-27",6.587],["2026-08-28",6.562],["2026-08-31",6.5935],["2026-09-01",6.5065],["2026-09-02",6.501],["2026-09-03",6.577],["2026-09-04",6.597],["2026-09-08",6.739],["2026-09-09",6.8035],["2026-09-10",6.467],["2026-09-11",6.4695],["2026-09-14",6.33],["2026-09-15",6.3685],["2026-09-16",6.4315],["2026-09-17",6.5865],["2026-09-18",6.615],["2026-09-21",6.6865],["2026-09-22",6.7595],["2026-09-23",6.678],["2026-09-24",6.7185],["2026-09-25",6.766]],"wti":[["2021-09-27",75.45],["2021-09-28",75.29],["2021-09-29",74.83],["2021-09-30",75.03],["2021-10-01",75.88],["2021-10-04",77.62],["2021-10-05",78.93],["2021-10-06",77.43],["2021-10-07",78.3],["2021-10-08",79.35],["2021-10-11",80.52],["2021-10-12",80.64],["2021-10-13",80.44],["2021-10-14",81.31],["2021-10-15",82.28],["2021-10-18",82.44],["2021-10-19",82.96],["2021-10-20",83.87],["2021-10-21",82.5],["2021-10-22",83.76],["2021-10-25",83.76],["2021-10-26",84.65],["2021-10-27",82.66],["2021-10-28",82.81],["2021-10-29",83.57],["2021-11-01",84.05],["2021-11-02",83.91],["2021-11-03",80.86],["2021-11-04",78.81],["2021-11-05",81.27],["2021-11-08",81.93],["2021-11-09",84.15],["2021-11-10",81.34],["2021-11-11",81.59],["2021-11-12",80.79],["2021-11-15",80.88],["2021-11-16",80.76],["2021-11-17",78.36],["2021-11-18",79.01],["2021-11-19",76.1],["2021-11-22",76.75],["2021-11-23",78.5],["2021-11-24",78.39],["2021-11-26",68.15],["2021-11-29",69.95],["2021-11-30",66.18],["2021-12-01",65.57],["2021-12-02",66.5],["2021-12-03",66.26],["2021-12-06",69.49],["2021-12-07",72.05],["2021-12-08",72.36],["2021-12-09",70.94],["2021-12-10",71.67],["2021-12-13",71.29],["2021-12-14",70.73],["2021-12-15",70.87],["2021-12-16",72.38],["2021-12-17",70.86],["2021-12-20",68.23],["2021-12-21",71.12],["2021-12-22",72.76],["2021-12-23",73.79],["2021-12-27",75.57],["2021-12-28",75.98],["2021-12-29",76.56],["2021-12-30",76.99],["2021-12-31",75.21],["2022-01-03",76.08],["2022-01-04",76.99],["2022-01-05",77.85],["2022-01-06",79.46],["2022-01-07",78.9],["2022-01-10",78.23],["2022-01-11",81.22],["2022-01-12",82.64],["2022-01-13",82.12],["2022-01-14",83.82],["2022-01-18",85.43],["2022-01-19",86.96],["2022-01-20",86.9],["2022-01-21",85.14],["2022-01-24",83.31],["2022-01-25",85.6],["2022-01-26",87.35],["2022-01-27",86.61],["2022-01-28",86.82],["2022-01-31",88.15],["2022-02-01",88.2],["2022-02-02",88.26],["2022-02-03",90.27],["2022-02-04",92.31],["2022-02-07",91.32],["2022-02-08",89.36],["2022-02-09",89.66],["2022-02-10",89.88],["2022-02-11",93.1],["2022-02-14",95.46],["2022-02-15",92.07],["2022-02-16",93.66],["2022-02-17",91.76],["2022-02-18",91.07],["2022-02-22",92.35],["2022-02-23",92.1],["2022-02-24",92.81],["2022-02-25",91.59],["2022-02-28",95.72],["2022-03-01",103.41],["2022-03-02",110.6],["2022-03-03",107.67],["2022-03-04",115.68],["2022-03-07",119.4],["2022-03-08",123.7],["2022-03-09",108.7],["2022-03-10",106.02],["2022-03-11",109.33],["2022-03-14",103.01],["2022-03-15",96.44],["2022-03-16",95.04],["2022-03-17",102.98],["2022-03-18",104.7],["2022-03-21",112.12],["2022-03-22",111.76],["2022-03-23",114.93],["2022-03-24",112.34],["2022-03-25",113.9],["2022-03-28",105.96],["2022-03-29",104.24],["2022-03-30",107.82],["2022-03-31",100.28],["2022-04-01",99.27],["2022-04-04",103.28],["2022-04-05",101.96],["2022-04-06",96.23],["2022-04-07",96.03],["2022-04-08",98.26],["2022-04-11",94.29],["2022-04-12",100.6],["2022-04-13",104.25],["2022-04-14",106.95],["2022-04-18",108.21],["2022-04-19",102.56],["2022-04-20",102.75],["2022-04-21",103.79],["2022-04-22",102.07],["2022-04-25",98.54],["2022-04-26",101.7],["2022-04-27",102.02],["2022-04-28",105.36],["2022-04-29",104.69],["2022-05-02",105.17],["2022-05-03",102.41],["2022-05-04",107.81],["2022-05-05",108.26],["2022-05-06",109.77],["2022-05-09",103.09],["2022-05-10",99.76],["2022-05-11",105.71],["2022-05-12",106.13],["2022-05-13",110.49],["2022-05-16",114.2],["2022-05-17",112.4],["2022-05-18",109.59],["2022-05-19",112.21],["2022-05-20",113.23],["2022-05-23",110.29],["2022-05-24",109.77],["2022-05-25",110.33],["2022-05-26",114.09],["2022-05-27",115.07],["2022-05-31",114.67],["2022-06-01",115.26],["2022-06-02",116.87],["2022-06-03",118.87],["2022-06-06",118.5],["2022-06-07",119.41],["2022-06-08",122.11],["2022-06-09",121.51],["2022-06-10",120.67],["2022-06-13",120.93],["2022-06-14",118.93],["2022-06-15",115.31],["2022-06-16",117.59],["2022-06-17",109.56],["2022-06-21",110.65],["2022-06-22",106.19],["2022-06-23",104.27],["2022-06-24",107.62],["2022-06-27",109.57],["2022-06-28",111.76],["2022-06-29",109.78],["2022-06-30",105.76],["2022-07-01",108.43],["2022-07-05",99.5],["2022-07-06",98.53],["2022-07-07",102.73],["2022-07-08",104.79],["2022-07-11",104.09],["2022-07-12",95.84],["2022-07-13",96.3],["2022-07-14",95.78],["2022-07-15",97.59],["2022-07-18",102.6],["2022-07-19",104.22],["2022-07-20",102.26],["2022-07-21",96.35],["2022-07-22",94.7],["2022-07-25",96.7],["2022-07-26",94.98],["2022-07-27",97.26],["2022-07-28",96.42],["2022-07-29",98.62],["2022-08-01",93.89],["2022-08-02",94.42],["2022-08-03",90.66],["2022-08-04",88.54],["2022-08-05",89.01],["2022-08-08",90.76],["2022-08-09",90.5],["2022-08-10",91.93],["2022-08-11",94.34],["2022-08-12",92.09],["2022-08-15",89.41],["2022-08-16",86.53],["2022-08-17",88.11],["2022-08-18",90.5],["2022-08-19",90.77],["2022-08-22",90.23],["2022-08-23",93.74],["2022-08-24",94.89],["2022-08-25",92.52],["2022-08-26",93.06],["2022-08-29",97.01],["2022-08-30",91.64],["2022-08-31",89.55],["2022-09-01",86.61],["2022-09-02",86.87],["2022-09-06",86.88],["2022-09-07",81.94],["2022-09-08",83.54],["2022-09-09",86.79],["2022-09-12",87.78],["2022-09-13",87.31],["2022-09-14",88.48],["2022-09-15",85.1],["2022-09-16",85.11],["2022-09-19",85.73],["2022-09-20",84.45],["2022-09-21",82.94],["2022-09-22",83.49],["2022-09-23",78.74],["2022-09-26",76.71],["2022-09-27",78.5],["2022-09-28",82.15],["2022-09-29",81.23],["2022-09-30",79.49],["2022-10-03",83.63],["2022-10-04",86.52],["2022-10-05",87.76],["2022-10-06",88.45],["2022-10-07",92.64],["2022-10-10",91.13],["2022-10-11",89.35],["2022-10-12",87.27],["2022-10-13",89.11],["2022-10-14",85.61],["2022-10-17",85.46],["2022-10-18",82.82],["2022-10-19",85.55],["2022-10-20",85.98],["2022-10-21",85.05],["2022-10-24",84.58],["2022-10-25",85.32],["2022-10-26",87.91],["2022-10-27",89.08],["2022-10-28",87.9],["2022-10-31",86.53],["2022-11-01",88.37],["2022-11-02",90.0],["2022-11-03",88.17],["2022-11-04",92.61],["2022-11-07",91.79],["2022-11-08",88.91],["2022-11-09",85.83],["2022-11-10",86.47],["2022-11-11",88.96],["2022-11-14",85.87],["2022-11-15",86.92],["2022-11-16",85.59],["2022-11-17",81.64],["2022-11-18",80.08],["2022-11-21",79.73],["2022-11-22",80.95],["2022-11-23",77.94],["2022-11-25",76.28],["2022-11-28",77.24],["2022-11-29",78.2],["2022-11-30",80.55],["2022-12-01",81.22],["2022-12-02",79.98],["2022-12-05",76.93],["2022-12-06",74.25],["2022-12-07",72.01],["2022-12-08",71.46],["2022-12-09",71.02],["2022-12-12",73.17],["2022-12-13",75.39],["2022-12-14",77.28],["2022-12-15",76.11],["2022-12-16",74.29],["2022-12-19",75.19],["2022-12-20",76.09],["2022-12-21",78.29],["2022-12-22",77.49],["2022-12-23",79.56],["2022-12-27",79.53],["2022-12-28",78.96],["2022-12-29",78.4],["2022-12-30",80.26],["2023-01-03",76.93],["2023-01-04",72.84],["2023-01-05",73.67],["2023-01-06",73.77],["2023-01-09",74.63],["2023-01-10",75.12],["2023-01-11",77.41],["2023-01-12",78.39],["2023-01-13",79.86],["2023-01-17",80.18],["2023-01-18",79.48],["2023-01-19",80.33],["2023-01-20",81.31],["2023-01-23",81.62],["2023-01-24",80.13],["2023-01-25",80.15],["2023-01-26",81.01],["2023-01-27",79.68],["2023-01-30",77.9],["2023-01-31",78.87],["2023-02-01",76.41],["2023-02-02",75.88],["2023-02-03",73.39],["2023-02-06",74.11],["2023-02-07",77.14],["2023-02-08",78.47],["2023-02-09",78.06],["2023-02-10",79.72],["2023-02-13",80.14],["2023-02-14",79.06],["2023-02-15",78.59],["2023-02-16",78.49],["2023-02-17",76.34],["2023-02-21",76.16],["2023-02-22",73.95],["2023-02-23",75.39],["2023-02-24",76.32],["2023-02-27",75.68],["2023-02-28",77.05],["2023-03-01",77.69],["2023-03-02",78.16],["2023-03-03",79.68],["2023-03-06",80.46],["2023-03-07",77.58],["2023-03-08",76.66],["2023-03-09",75.72],["2023-03-10",76.68],["2023-03-13",74.8],["2023-03-14",71.33],["2023-03-15",67.61],["2023-03-16",68.35],["2023-03-17",66.74],["2023-03-20",67.64],["2023-03-21",69.33],["2023-03-22",70.9],["2023-03-23",69.96],["2023-03-24",69.26],["2023-03-27",72.81],["2023-03-28",73.2],["2023-03-29",72.97],["2023-03-30",74.37],["2023-03-31",75.67],["2023-04-03",80.42],["2023-04-04",80.71],["2023-04-05",80.61],["2023-04-06",80.7],["2023-04-10",79.74],["2023-04-11",81.53],["2023-04-12",83.26],["2023-04-13",82.16],["2023-04-14",82.52],["2023-04-17",80.83],["2023-04-18",80.86],["2023-04-19",79.16],["2023-04-20",77.29],["2023-04-21",77.87],["2023-04-24",78.76],["2023-04-25",77.07],["2023-04-26",74.3],["2023-04-27",74.76],["2023-04-28",76.78],["2023-05-01",75.66],["2023-05-02",71.66],["2023-05-03",68.6],["2023-05-04",68.56],["2023-05-05",71.34],["2023-05-08",73.16],["2023-05-09",73.71],["2023-05-10",72.56],["2023-05-11",70.87],["2023-05-12",70.04],["2023-05-15",71.11],["2023-05-16",70.86],["2023-05-17",72.83],["2023-05-18",71.86],["2023-05-19",71.55],["2023-05-22",71.99],["2023-05-23",72.91],["2023-05-24",74.34],["2023-05-25",71.83],["2023-05-26",72.67],["2023-05-30",69.46],["2023-05-31",68.09],["2023-06-01",70.1],["2023-06-02",71.74],["2023-06-05",72.15],["2023-06-06",71.74],["2023-06-07",72.53],["2023-06-08",71.29],["2023-06-09",70.17],["2023-06-12",67.12],["2023-06-13",69.42],["2023-06-14",68.27],["2023-06-15",70.62],["2023-06-16",71.78],["2023-06-20",70.5],["2023-06-21",72.53],["2023-06-22",69.51],["2023-06-23",69.16],["2023-06-26",69.37],["2023-06-27",67.7],["2023-06-28",69.56],["2023-06-29",69.86],["2023-06-30",70.64],["2023-07-03",69.79],["2023-07-05",71.79],["2023-07-06",71.8],["2023-07-07",73.86],["2023-07-10",72.99],["2023-07-11",74.83],["2023-07-12",75.75],["2023-07-13",76.89],["2023-07-14",75.42],["2023-07-17",74.15],["2023-07-18",75.75],["2023-07-19",75.35],["2023-07-20",75.63],["2023-07-21",77.07],["2023-07-24",78.74],["2023-07-25",79.63],["2023-07-26",78.78],["2023-07-27",80.09],["2023-07-28",80.58],["2023-07-31",81.8],["2023-08-01",81.37],["2023-08-02",79.49],["2023-08-03",81.55],["2023-08-04",82.82],["2023-08-07",81.94],["2023-08-08",82.92],["2023-08-09",84.4],["2023-08-10",82.82],["2023-08-11",83.19],["2023-08-14",82.51],["2023-08-15",80.99],["2023-08-16",79.38],["2023-08-17",80.39],["2023-08-18",81.25],["2023-08-21",80.72],["2023-08-22",80.35],["2023-08-23",78.89],["2023-08-24",79.05],["2023-08-25",79.83],["2023-08-28",80.1],["2023-08-29",81.16],["2023-08-30",81.63],["2023-08-31",83.63],["2023-09-01",85.55],["2023-09-05",86.69],["2023-09-06",87.54],["2023-09-07",86.87],["2023-09-08",87.51],["2023-09-11",87.29],["2023-09-12",88.84],["2023-09-13",88.52],["2023-09-14",90.16],["2023-09-15",90.77],["2023-09-18",91.48],["2023-09-19",91.2],["2023-09-20",90.28],["2023-09-21",89.63],["2023-09-22",90.03],["2023-09-25",89.68],["2023-09-26",90.39],["2023-09-27",93.68],["2023-09-28",91.71],["2023-09-29",90.79],["2023-10-02",88.82],["2023-10-03",89.23],["2023-10-04",84.22],["2023-10-05",82.31],["2023-10-06",82.79],["2023-10-09",86.38],["2023-10-10",85.97],["2023-10-11",83.49],["2023-10-12",82.91],["2023-10-13",87.69],["2023-10-16",86.66],["2023-10-17",86.66],["2023-10-18",88.32],["2023-10-19",89.37],["2023-10-20",88.75],["2023-10-23",85.49],["2023-10-24",83.74],["2023-10-25",85.39],["2023-10-26",83.21],["2023-10-27",85.54],["2023-10-30",82.31],["2023-10-31",81.02],["2023-11-01",80.44],["2023-11-02",82.46],["2023-11-03",80.51],["2023-11-06",80.82],["2023-11-07",77.37],["2023-11-08",75.33],["2023-11-09",75.74],["2023-11-10",77.17],["2023-11-13",78.26],["2023-11-14",78.26],["2023-11-15",76.66],["2023-11-16",72.9],["2023-11-17",75.89],["2023-11-20",77.6],["2023-11-21",77.77],["2023-11-22",77.1],["2023-11-24",75.54],["2023-11-27",74.86],["2023-11-28",76.41],["2023-11-29",77.86],["2023-11-30",75.96],["2023-12-01",74.07],["2023-12-04",73.04],["2023-12-05",72.32],["2023-12-06",69.38],["2023-12-07",69.34],["2023-12-08",71.23],["2023-12-11",71.32],["2023-12-12",68.61],["2023-12-13",69.47],["2023-12-14",71.58],["2023-12-15",71.43],["2023-12-18",72.47],["2023-12-19",73.44],["2023-12-20",74.22],["2023-12-21",73.89],["2023-12-22",73.56],["2023-12-26",75.57],["2023-12-27",74.11],["2023-12-28",71.77],["2023-12-29",71.65],["2024-01-02",70.38],["2024-01-03",72.7],["2024-01-04",72.19],["2024-01-05",73.81],["2024-01-08",70.77],["2024-01-09",72.24],["2024-01-10",71.37],["2024-01-11",72.02],["2024-01-12",72.68],["2024-01-16",72.4],["2024-01-17",72.56],["2024-01-18",74.08],["2024-01-19",73.41],["2024-01-22",75.19],["2024-01-23",74.37],["2024-01-24",75.09],["2024-01-25",77.36],["2024-01-26",78.01],["2024-01-29",76.78],["2024-01-30",77.82],["2024-01-31",75.85],["2024-02-01",73.82],["2024-02-02",72.28],["2024-02-05",72.78],["2024-02-06",73.31],["2024-02-07",73.86],["2024-02-08",76.22],["2024-02-09",76.84],["2024-02-12",76.92],["2024-02-13",77.87],["2024-02-14",76.64],["2024-02-15",78.03],["2024-02-16",79.19],["2024-02-20",78.18],["2024-02-21",77.91],["2024-02-22",78.61],["2024-02-23",76.49],["2024-02-26",77.58],["2024-02-27",78.87],["2024-02-28",78.54],["2024-02-29",78.26],["2024-03-01",79.97],["2024-03-04",78.74],["2024-03-05",78.15],["2024-03-06",79.13],["2024-03-07",78.93],["2024-03-08",78.01],["2024-03-11",77.93],["2024-03-12",77.56],["2024-03-13",79.72],["2024-03-14",81.26],["2024-03-15",81.04],["2024-03-18",82.72],["2024-03-19",83.47],["2024-03-20",81.68],["2024-03-21",81.07],["2024-03-22",80.63],["2024-03-25",81.95],["2024-03-26",81.62],["2024-03-27",81.35],["2024-03-28",83.17],["2024-04-01",83.71],["2024-04-02",85.15],["2024-04-03",85.43],["2024-04-04",86.59],["2024-04-05",86.91],["2024-04-08",86.43],["2024-04-09",85.23],["2024-04-10",86.21],["2024-04-11",85.02],["2024-04-12",85.66],["2024-04-15",85.41],["2024-04-16",85.36],["2024-04-17",82.69],["2024-04-18",82.73],["2024-04-19",83.14],["2024-04-22",82.85],["2024-04-23",83.36],["2024-04-24",82.81],["2024-04-25",83.57],["2024-04-26",83.85],["2024-04-29",82.63],["2024-04-30",81.93],["2024-05-01",79.0],["2024-05-02",78.95],["2024-05-03",78.11],["2024-05-06",78.48],["2024-05-07",78.38],["2024-05-08",78.99],["2024-05-09",79.26],["2024-05-10",78.26],["2024-05-13",79.12],["2024-05-14",78.02],["2024-05-15",78.63],["2024-05-16",79.23],["2024-05-17",80.06],["2024-05-20",79.8],["2024-05-21",79.26],["2024-05-22",77.57],["2024-05-23",76.87],["2024-05-24",77.72],["2024-05-28",79.83],["2024-05-29",79.23],["2024-05-30",77.91],["2024-05-31",76.99],["2024-06-03",74.22],["2024-06-04",73.25],["2024-06-05",74.07],["2024-06-06",75.55],["2024-06-07",75.53],["2024-06-10",77.74],["2024-06-11",77.9],["2024-06-12",78.5],["2024-06-13",78.62],["2024-06-14",78.45],["2024-06-17",80.33],["2024-06-18",81.57],["2024-06-20",82.17],["2024-06-21",80.73],["2024-06-24",81.63],["2024-06-25",80.83],["2024-06-26",80.9],["2024-06-27",81.74],["2024-06-28",81.54],["2024-07-01",83.38],["2024-07-02",82.81],["2024-07-03",83.88],["2024-07-05",83.16],["2024-07-08",82.33],["2024-07-09",81.41],["2024-07-10",82.1],["2024-07-11",82.62],["2024-07-12",82.21],["2024-07-15",81.91],["2024-07-16",80.76],["2024-07-17",82.85],["2024-07-18",82.82],["2024-07-19",80.13],["2024-07-22",79.78],["2024-07-23",76.96],["2024-07-24",77.59],["2024-07-25",78.28],["2024-07-26",77.16],["2024-07-29",75.81],["2024-07-30",74.73],["2024-07-31",77.91],["2024-08-01",76.31],["2024-08-02",73.52],["2024-08-05",72.94],["2024-08-06",73.2],["2024-08-07",75.23],["2024-08-08",76.19],["2024-08-09",76.84],["2024-08-12",80.06],["2024-08-13",78.35],["2024-08-14",76.98],["2024-08-15",78.16],["2024-08-16",76.65],["2024-08-19",74.37],["2024-08-20",74.04],["2024-08-21",71.93],["2024-08-22",73.01],["2024-08-23",74.83],["2024-08-26",77.42],["2024-08-27",75.53],["2024-08-28",74.52],["2024-08-29",75.91],["2024-08-30",73.55],["2024-09-03",70.34],["2024-09-04",69.2],["2024-09-05",69.15],["2024-09-06",67.67],["2024-09-09",68.71],["2024-09-10",65.75],["2024-09-11",67.31],["2024-09-12",68.97],["2024-09-13",68.65],["2024-09-16",70.09],["2024-09-17",71.19],["2024-09-18",70.91],["2024-09-19",71.95],["2024-09-20",71.92],["2024-09-23",70.37],["2024-09-24",71.56],["2024-09-25",69.69],["2024-09-26",67.67],["2024-09-27",68.18],["2024-09-30",68.17],["2024-10-01",69.83],["2024-10-02",70.1],["2024-10-03",73.71],["2024-10-04",74.38],["2024-10-07",77.14],["2024-10-08",73.57],["2024-10-09",73.24],["2024-10-10",75.85],["2024-10-11",75.56],["2024-10-14",73.83],["2024-10-15",70.58],["2024-10-16",70.39],["2024-10-17",70.67],["2024-10-18",69.22],["2024-10-21",70.56],["2024-10-22",72.09],["2024-10-23",70.77],["2024-10-24",70.19],["2024-10-25",71.78],["2024-10-28",67.38],["2024-10-29",67.21],["2024-10-30",68.61],["2024-10-31",69.26],["2024-11-01",69.49],["2024-11-04",71.47],["2024-11-05",71.99],["2024-11-06",71.69],["2024-11-07",72.36],["2024-11-08",70.38],["2024-11-11",68.04],["2024-11-12",68.12],["2024-11-13",68.43],["2024-11-14",68.7],["2024-11-15",67.02],["2024-11-18",69.16],["2024-11-19",69.39],["2024-11-20",68.87],["2024-11-21",70.1],["2024-11-22",71.24],["2024-11-25",68.94],["2024-11-26",68.77],["2024-11-27",68.72],["2024-11-29",68.0],["2024-12-02",68.1],["2024-12-03",69.94],["2024-12-04",68.54],["2024-12-05",68.3],["2024-12-06",67.2],["2024-12-09",68.37],["2024-12-10",68.59],["2024-12-11",70.29],["2024-12-12",70.02],["2024-12-13",71.29],["2024-12-16",70.71],["2024-12-17",70.08],["2024-12-18",70.58],["2024-12-19",69.91],["2024-12-20",69.46],["2024-12-23",69.24],["2024-12-24",70.1],["2024-12-26",69.62],["2024-12-27",70.6],["2024-12-30",70.99],["2024-12-31",71.72],["2025-01-02",73.13],["2025-01-03",73.96],["2025-01-06",73.56],["2025-01-07",74.25],["2025-01-08",73.32],["2025-01-09",73.92],["2025-01-10",76.57],["2025-01-13",78.82],["2025-01-14",77.5],["2025-01-15",80.04],["2025-01-16",78.68],["2025-01-17",77.88],["2025-01-21",75.89],["2025-01-22",75.44],["2025-01-23",74.62],["2025-01-24",74.66],["2025-01-27",73.17],["2025-01-28",73.77],["2025-01-29",72.62],["2025-01-30",72.73],["2025-01-31",72.53],["2025-02-03",73.16],["2025-02-04",72.7],["2025-02-05",71.03],["2025-02-06",70.61],["2025-02-07",71.0],["2025-02-10",72.32],["2025-02-11",73.32],["2025-02-12",71.37],["2025-02-13",71.29],["2025-02-14",70.74],["2025-02-18",71.85],["2025-02-19",72.25],["2025-02-20",72.57],["2025-02-21",70.4],["2025-02-24",70.7],["2025-02-25",68.93],["2025-02-26",68.62],["2025-02-27",70.35],["2025-02-28",69.76],["2025-03-03",68.37],["2025-03-04",68.26],["2025-03-05",66.31],["2025-03-06",66.36],["2025-03-07",67.04],["2025-03-10",66.03],["2025-03-11",66.25],["2025-03-12",67.68],["2025-03-13",66.55],["2025-03-14",67.18],["2025-03-17",67.58],["2025-03-18",66.9],["2025-03-19",67.16],["2025-03-20",68.26],["2025-03-21",68.28],["2025-03-24",69.11],["2025-03-25",69.0],["2025-03-26",69.65],["2025-03-27",69.92],["2025-03-28",69.36],["2025-03-31",71.48],["2025-04-01",71.2],["2025-04-02",71.71],["2025-04-03",66.95],["2025-04-04",61.99],["2025-04-07",60.7],["2025-04-08",59.58],["2025-04-09",62.35],["2025-04-10",60.07],["2025-04-11",61.5],["2025-04-14",61.53],["2025-04-15",61.33],["2025-04-16",62.47],["2025-04-17",64.68],["2025-04-21",63.08],["2025-04-22",64.31],["2025-04-23",62.27],["2025-04-24",62.79],["2025-04-25",63.02],["2025-04-28",62.05],["2025-04-29",60.42],["2025-04-30",58.21],["2025-05-01",59.24],["2025-05-02",58.29],["2025-05-05",57.13],["2025-05-06",59.09],["2025-05-07",58.07],["2025-05-08",59.91],["2025-05-09",61.02],["2025-05-12",61.95],["2025-05-13",63.67],["2025-05-14",63.15],["2025-05-15",61.62],["2025-05-16",62.49],["2025-05-19",62.69],["2025-05-20",62.56],["2025-05-21",61.57],["2025-05-22",61.2],["2025-05-23",61.53],["2025-05-27",60.89],["2025-05-28",61.84],["2025-05-29",60.94],["2025-05-30",60.79],["2025-06-02",62.52],["2025-06-03",63.41],["2025-06-04",62.85],["2025-06-05",63.37],["2025-06-06",64.58],["2025-06-09",65.29],["2025-06-10",64.98],["2025-06-11",68.15],["2025-06-12",68.04],["2025-06-13",72.98],["2025-06-16",71.77],["2025-06-17",74.84],["2025-06-18",75.14],["2025-06-20",74.93],["2025-06-23",68.51],["2025-06-24",64.37],["2025-06-25",64.92],["2025-06-26",65.24],["2025-06-27",65.52],["2025-06-30",65.11],["2025-07-01",65.45],["2025-07-02",67.45],["2025-07-03",67.0],["2025-07-04",66.5],["2025-07-07",67.93],["2025-07-08",68.33],["2025-07-09",68.38],["2025-07-10",66.57],["2025-07-11",68.45],["2025-07-14",66.98],["2025-07-15",66.52],["2025-07-16",66.38],["2025-07-17",67.54],["2025-07-18",67.34],["2025-07-21",67.2],["2025-07-22",66.21],["2025-07-23",65.25],["2025-07-24",66.03],["2025-07-25",65.16],["2025-07-28",66.71],["2025-07-29",69.21],["2025-07-30",70.0],["2025-07-31",69.26],["2025-08-01",67.33],["2025-08-04",66.29],["2025-08-05",65.16],["2025-08-06",64.35],["2025-08-07",63.88],["2025-08-08",63.88],["2025-08-11",63.96],["2025-08-12",63.17],["2025-08-13",62.65],["2025-08-14",63.96],["2025-08-15",62.8],["2025-08-18",63.42],["2025-08-19",62.35],["2025-08-20",63.21],["2025-08-21",63.52],["2025-08-22",63.66],["2025-08-25",64.8],["2025-08-26",63.25],["2025-08-27",64.15],["2025-08-28",64.6],["2025-08-29",64.01],["2025-09-02",65.59],["2025-09-03",63.97],["2025-09-04",63.48],["2025-09-05",61.87],["2025-09-08",62.26],["2025-09-09",62.63],["2025-09-10",63.67],["2025-09-11",62.37],["2025-09-12",62.69],["2025-09-15",63.3],["2025-09-16",64.52],["2025-09-17",64.05],["2025-09-18",63.57],["2025-09-19",62.68],["2025-09-22",62.64],["2025-09-23",63.41],["2025-09-24",64.99],["2025-09-25",64.98],["2025-09-26",65.72],["2025-09-29",63.45],["2025-09-30",62.37],["2025-10-01",61.78],["2025-10-02",60.48],["2025-10-03",60.88],["2025-10-06",61.69],["2025-10-07",61.73],["2025-10-08",62.55],["2025-10-09",61.51],["2025-10-10",58.9],["2025-10-13",59.49],["2025-10-14",58.7],["2025-10-15",58.27],["2025-10-16",57.46],["2025-10-17",57.54],["2025-10-20",57.52],["2025-10-21",57.82],["2025-10-22",58.5],["2025-10-23",61.79],["2025-10-24",61.5],["2025-10-27",61.31],["2025-10-28",60.15],["2025-10-29",60.48],["2025-10-30",60.57],["2025-10-31",60.98],["2025-11-03",61.05],["2025-11-04",60.56],["2025-11-05",59.6],["2025-11-06",59.43],["2025-11-07",59.75],["2025-11-10",60.13],["2025-11-11",61.04],["2025-11-12",58.49],["2025-11-13",58.69],["2025-11-14",60.09],["2025-11-17",59.91],["2025-11-18",60.74],["2025-11-19",59.44],["2025-11-20",59.14],["2025-11-21",58.06],["2025-11-24",58.84],["2025-11-25",57.95],["2025-11-26",58.65],["2025-11-28",58.55],["2025-12-01",59.32],["2025-12-02",58.64],["2025-12-03",58.95],["2025-12-04",59.67],["2025-12-05",60.08],["2025-12-08",58.88],["2025-12-09",58.25],["2025-12-10",58.46],["2025-12-11",57.6],["2025-12-12",57.44],["2025-12-15",56.82],["2025-12-16",55.27],["2025-12-17",55.94],["2025-12-18",56.15],["2025-12-19",56.66],["2025-12-22",58.01],["2025-12-23",58.38],["2025-12-24",58.35],["2025-12-26",56.74],["2025-12-29",58.08],["2025-12-30",57.95],["2025-12-31",57.42],["2026-01-02",57.32],["2026-01-05",58.32],["2026-01-06",57.13],["2026-01-07",55.99],["2026-01-08",57.76],["2026-01-09",59.12],["2026-01-12",59.5],["2026-01-13",61.15],["2026-01-14",62.02],["2026-01-15",59.19],["2026-01-16",59.44],["2026-01-20",60.34],["2026-01-21",60.62],["2026-01-22",59.36],["2026-01-23",61.07],["2026-01-26",60.63],["2026-01-27",62.39],["2026-01-28",63.21],["2026-01-29",65.42],["2026-01-30",65.21],["2026-02-02",62.14],["2026-02-03",63.21],["2026-02-04",65.14],["2026-02-05",63.29],["2026-02-06",63.55],["2026-02-09",64.36],["2026-02-10",63.96],["2026-02-11",64.63],["2026-02-12",62.84],["2026-02-13",62.89],["2026-02-17",62.33],["2026-02-18",65.19],["2026-02-19",66.43],["2026-02-20",66.39],["2026-02-23",66.31],["2026-02-24",65.63],["2026-02-25",65.42],["2026-02-26",65.21],["2026-02-27",67.02],["2026-03-02",71.23],["2026-03-03",74.56],["2026-03-04",74.66],["2026-03-05",81.01],["2026-03-06",90.9],["2026-03-09",94.77],["2026-03-10",83.45],["2026-03-11",87.25],["2026-03-12",95.73],["2026-03-13",98.71],["2026-03-16",93.5],["2026-03-17",96.21],["2026-03-18",96.32],["2026-03-19",96.14],["2026-03-20",98.32],["2026-03-23",88.13],["2026-03-24",92.35],["2026-03-25",90.32],["2026-03-26",94.48],["2026-03-27",99.64],["2026-03-30",102.88],["2026-03-31",101.38],["2026-04-01",100.12],["2026-04-02",111.54],["2026-04-06",112.41],["2026-04-07",112.95],["2026-04-08",94.41],["2026-04-09",97.87],["2026-04-10",96.57],["2026-04-13",99.08],["2026-04-14",91.28],["2026-04-15",91.29],["2026-04-16",94.69],["2026-04-17",83.85],["2026-04-20",89.61],["2026-04-21",92.13],["2026-04-22",92.96],["2026-04-23",95.85],["2026-04-24",94.4],["2026-04-27",96.37],["2026-04-28",99.93],["2026-04-29",106.88],["2026-04-30",105.07],["2026-05-01",101.94],["2026-05-04",106.42],["2026-05-05",102.27],["2026-05-06",95.08],["2026-05-07",94.81],["2026-05-08",95.42],["2026-05-11",98.07],["2026-05-12",102.18],["2026-05-13",101.02],["2026-05-14",101.17],["2026-05-15",105.42],["2026-05-18",108.66],["2026-05-19",107.77],["2026-05-20",98.26],["2026-05-21",96.35],["2026-05-22",96.6],["2026-05-26",93.89],["2026-05-27",88.68],["2026-05-28",88.9],["2026-05-29",87.36],["2026-06-01",92.16],["2026-06-02",93.76],["2026-06-03",96.02],["2026-06-04",93.04],["2026-06-05",90.54],["2026-06-08",91.3],["2026-06-09",88.2],["2026-06-10",90.03],["2026-06-11",87.71],["2026-06-12",84.88],["2026-06-15",80.75],["2026-06-16",76.05],["2026-06-17",76.79],["2026-06-18",76.6],["2026-06-22",74.82],["2026-06-23",73.21],["2026-06-24",70.34],["2026-06-25",71.92],["2026-06-26",69.23],["2026-06-29",70.75],["2026-06-30",69.5],["2026-07-01",68.58],["2026-07-02",68.69],["2026-07-06",68.55],["2026-07-07",70.44],["2026-07-08",73.52],["2026-07-09",72.08],["2026-07-10",71.41],["2026-07-13",78.14],["2026-07-14",79.34],["2026-07-15",79.6],["2026-07-16",78.95],["2026-07-17",82.49],["2026-07-20",83.23],["2026-07-21",84.91],["2026-07-22",86.83],["2026-07-23",92.19],["2026-07-24",89.31],["2026-07-27",82.61],["2026-07-28",79.26],["2026-07-29",84.46],["2026-07-30",83.59],["2026-07-31",84.67],["2026-08-03",80.34],["2026-08-04",75.77],["2026-08-05",75.22],["2026-08-06",77.29],["2026-08-07",78.18],["2026-08-10",82.13],["2026-08-11",83.2],["2026-08-12",83.27],["2026-08-13",81.25],["2026-08-14",82.4],["2026-08-17",84.5],["2026-08-18",84.94],["2026-08-19",85.83],["2026-08-20",87.83],["2026-08-21",87.06],["2026-08-24",85.01],["2026-08-25",82.36],["2026-08-26",82.23],["2026-08-27",83.53],["2026-08-28",83.4],["2026-08-31",85.76],["2026-09-01",90.22],["2026-09-02",91.01],["2026-09-03",91.3],["2026-09-04",91.48],["2026-09-08",93.03],["2026-09-09",96.05],["2026-09-10",102.48],["2026-09-11",100.05],["2026-09-14",101.39],["2026-09-15",105.83],["2026-09-16",102.43],["2026-09-17",101.91],["2026-09-18",100.3],["2026-09-21",95.78],["2026-09-22",94.59],["2026-09-23",92.16],["2026-09-24",94.61],["2026-09-25",92.41]],"brent":[["2021-09-27",79.53],["2021-09-28",79.09],["2021-09-29",78.64],["2021-09-30",78.52],["2021-10-01",79.28],["2021-10-04",81.26],["2021-10-05",82.56],["2021-10-06",81.08],["2021-10-07",81.95],["2021-10-08",82.39],["2021-10-11",83.65],["2021-10-12",83.42],["2021-10-13",83.18],["2021-10-14",84.0],["2021-10-15",84.86],["2021-10-18",84.33],["2021-10-19",85.08],["2021-10-20",85.82],["2021-10-21",84.61],["2021-10-22",85.53],["2021-10-25",85.99],["2021-10-26",86.4],["2021-10-27",84.58],["2021-10-28",84.32],["2021-10-29",84.38],["2021-11-01",84.71],["2021-11-02",84.72],["2021-11-03",81.99],["2021-11-04",80.54],["2021-11-05",82.74],["2021-11-08",83.43],["2021-11-09",84.78],["2021-11-10",82.64],["2021-11-11",82.87],["2021-11-12",82.17],["2021-11-15",82.05],["2021-11-16",82.43],["2021-11-17",80.28],["2021-11-18",81.24],["2021-11-19",78.89],["2021-11-22",79.7],["2021-11-23",82.31],["2021-11-24",82.25],["2021-11-26",72.72],["2021-11-29",73.44],["2021-11-30",70.57],["2021-12-01",68.87],["2021-12-02",69.67],["2021-12-03",69.88],["2021-12-06",73.08],["2021-12-07",75.44],["2021-12-08",75.82],["2021-12-09",74.42],["2021-12-10",75.15],["2021-12-13",74.39],["2021-12-14",73.7],["2021-12-15",73.88],["2021-12-16",75.02],["2021-12-17",73.52],["2021-12-20",71.52],["2021-12-21",73.98],["2021-12-22",75.29],["2021-12-23",76.85],["2021-12-27",78.6],["2021-12-28",78.94],["2021-12-29",79.23],["2021-12-30",79.32],["2021-12-31",77.78],["2022-01-03",78.98],["2022-01-04",80.0],["2022-01-05",80.8],["2022-01-06",81.99],["2022-01-07",81.75],["2022-01-10",80.87],["2022-01-11",83.72],["2022-01-12",84.67],["2022-01-13",84.47],["2022-01-14",86.06],["2022-01-18",87.51],["2022-01-19",88.44],["2022-01-20",88.38],["2022-01-21",87.89],["2022-01-24",86.27],["2022-01-25",88.2],["2022-01-26",89.96],["2022-01-27",89.34],["2022-01-28",90.03],["2022-01-31",91.21],["2022-02-01",89.16],["2022-02-02",89.47],["2022-02-03",91.11],["2022-02-04",93.27],["2022-02-07",92.69],["2022-02-08",90.78],["2022-02-09",91.55],["2022-02-10",91.41],["2022-02-11",94.44],["2022-02-14",96.48],["2022-02-15",93.28],["2022-02-16",94.81],["2022-02-17",92.97],["2022-02-18",93.54],["2022-02-22",96.84],["2022-02-23",96.84],["2022-02-24",99.08],["2022-02-25",97.93],["2022-02-28",100.99],["2022-03-01",104.97],["2022-03-02",112.93],["2022-03-03",110.46],["2022-03-04",118.11],["2022-03-07",123.21],["2022-03-08",127.98],["2022-03-09",111.14],["2022-03-10",109.33],["2022-03-11",112.67],["2022-03-14",106.9],["2022-03-15",99.91],["2022-03-16",98.02],["2022-03-17",106.64],["2022-03-18",107.93],["2022-03-21",115.62],["2022-03-22",115.48],["2022-03-23",121.6],["2022-03-24",119.03],["2022-03-25",120.65],["2022-03-28",112.48],["2022-03-29",110.23],["2022-03-30",113.45],["2022-03-31",107.91],["2022-04-01",104.39],["2022-04-04",107.53],["2022-04-05",106.64],["2022-04-06",101.07],["2022-04-07",100.58],["2022-04-08",102.78],["2022-04-11",98.48],["2022-04-12",104.64],["2022-04-13",108.78],["2022-04-14",111.7],["2022-04-18",113.16],["2022-04-19",107.25],["2022-04-20",106.8],["2022-04-21",108.33],["2022-04-22",106.65],["2022-04-25",102.32],["2022-04-26",104.99],["2022-04-27",105.32],["2022-04-28",107.59],["2022-04-29",109.34],["2022-05-02",107.58],["2022-05-03",104.97],["2022-05-04",110.14],["2022-05-05",110.9],["2022-05-06",112.39],["2022-05-09",105.94],["2022-05-10",102.46],["2022-05-11",107.51],["2022-05-12",107.45],["2022-05-13",111.55],["2022-05-16",114.24],["2022-05-17",111.93],["2022-05-18",109.11],["2022-05-19",112.04],["2022-05-20",112.55],["2022-05-23",113.42],["2022-05-24",113.56],["2022-05-25",114.03],["2022-05-26",117.4],["2022-05-27",119.43],["2022-05-31",122.84],["2022-06-01",116.29],["2022-06-02",117.61],["2022-06-03",119.72],["2022-06-06",119.51],["2022-06-07",120.57],["2022-06-08",123.58],["2022-06-09",123.07],["2022-06-10",122.01],["2022-06-13",122.27],["2022-06-14",121.17],["2022-06-15",118.51],["2022-06-16",119.81],["2022-06-17",113.12],["2022-06-21",114.65],["2022-06-22",111.74],["2022-06-23",110.05],["2022-06-24",113.12],["2022-06-27",115.09],["2022-06-28",117.98],["2022-06-29",116.26],["2022-06-30",114.81],["2022-07-01",111.63],["2022-07-05",102.77],["2022-07-06",100.69],["2022-07-07",104.65],["2022-07-08",107.02],["2022-07-11",107.1],["2022-07-12",99.49],["2022-07-13",99.57],["2022-07-14",99.1],["2022-07-15",101.16],["2022-07-18",106.27],["2022-07-19",107.35],["2022-07-20",106.92],["2022-07-21",103.86],["2022-07-22",103.2],["2022-07-25",105.15],["2022-07-26",104.4],["2022-07-27",106.62],["2022-07-28",107.14],["2022-07-29",110.01],["2022-08-01",100.03],["2022-08-02",100.54],["2022-08-03",96.78],["2022-08-04",94.12],["2022-08-05",94.92],["2022-08-08",96.65],["2022-08-09",96.31],["2022-08-10",97.4],["2022-08-11",99.6],["2022-08-12",98.15],["2022-08-15",95.1],["2022-08-16",92.34],["2022-08-17",93.65],["2022-08-18",96.59],["2022-08-19",96.72],["2022-08-22",96.48],["2022-08-23",100.22],["2022-08-24",101.22],["2022-08-25",99.34],["2022-08-26",100.99],["2022-08-29",105.09],["2022-08-30",99.31],["2022-08-31",96.49],["2022-09-01",92.36],["2022-09-02",93.02],["2022-09-06",92.83],["2022-09-07",88.0],["2022-09-08",89.15],["2022-09-09",92.84],["2022-09-12",94.0],["2022-09-13",93.17],["2022-09-14",94.1],["2022-09-15",90.84],["2022-09-16",91.35],["2022-09-19",92.0],["2022-09-20",90.62],["2022-09-21",89.83],["2022-09-22",90.46],["2022-09-23",86.15],["2022-09-26",84.06],["2022-09-27",86.27],["2022-09-28",89.32],["2022-09-29",88.49],["2022-09-30",87.96],["2022-10-03",88.86],["2022-10-04",91.8],["2022-10-05",93.37],["2022-10-06",94.42],["2022-10-07",97.92],["2022-10-10",96.19],["2022-10-11",94.29],["2022-10-12",92.45],["2022-10-13",94.57],["2022-10-14",91.63],["2022-10-17",91.62],["2022-10-18",90.03],["2022-10-19",92.41],["2022-10-20",92.38],["2022-10-21",93.5],["2022-10-24",93.26],["2022-10-25",93.52],["2022-10-26",95.69],["2022-10-27",96.96],["2022-10-28",95.77],["2022-10-31",94.83],["2022-11-01",94.65],["2022-11-02",96.16],["2022-11-03",94.67],["2022-11-04",98.57],["2022-11-07",97.92],["2022-11-08",95.36],["2022-11-09",92.65],["2022-11-10",93.67],["2022-11-11",95.99],["2022-11-14",93.14],["2022-11-15",93.86],["2022-11-16",92.86],["2022-11-17",89.78],["2022-11-18",87.62],["2022-11-21",87.45],["2022-11-22",88.36],["2022-11-23",85.41],["2022-11-25",83.63],["2022-11-28",83.19],["2022-11-29",83.03],["2022-11-30",85.43],["2022-12-01",86.88],["2022-12-02",85.57],["2022-12-05",82.68],["2022-12-06",79.35],["2022-12-07",77.17],["2022-12-08",76.15],["2022-12-09",76.1],["2022-12-12",77.99],["2022-12-13",80.68],["2022-12-14",82.7],["2022-12-15",81.21],["2022-12-16",79.04],["2022-12-19",79.8],["2022-12-20",79.99],["2022-12-21",82.2],["2022-12-22",80.98],["2022-12-23",83.92],["2022-12-27",84.33],["2022-12-28",83.26],["2022-12-29",82.26],["2022-12-30",85.91],["2023-01-03",82.1],["2023-01-04",77.84],["2023-01-05",78.69],["2023-01-06",78.57],["2023-01-09",79.65],["2023-01-10",80.1],["2023-01-11",82.67],["2023-01-12",84.03],["2023-01-13",85.28],["2023-01-17",85.92],["2023-01-18",84.98],["2023-01-19",86.16],["2023-01-20",87.63],["2023-01-23",88.19],["2023-01-24",86.13],["2023-01-25",86.12],["2023-01-26",87.47],["2023-01-27",86.66],["2023-01-30",84.9],["2023-01-31",84.49],["2023-02-01",82.84],["2023-02-02",82.17],["2023-02-03",79.94],["2023-02-06",80.99],["2023-02-07",83.69],["2023-02-08",85.09],["2023-02-09",84.5],["2023-02-10",86.39],["2023-02-13",86.61],["2023-02-14",85.58],["2023-02-15",85.38],["2023-02-16",85.14],["2023-02-17",83.0],["2023-02-21",83.05],["2023-02-22",80.6],["2023-02-23",82.21],["2023-02-24",83.16],["2023-02-27",82.45],["2023-02-28",83.89],["2023-03-01",84.31],["2023-03-02",84.75],["2023-03-03",85.83],["2023-03-06",86.18],["2023-03-07",83.29],["2023-03-08",82.66],["2023-03-09",81.59],["2023-03-10",82.78],["2023-03-13",80.77],["2023-03-14",77.45],["2023-03-15",73.69],["2023-03-16",74.7],["2023-03-17",72.97],["2023-03-20",73.79],["2023-03-21",75.32],["2023-03-22",76.69],["2023-03-23",75.91],["2023-03-24",74.99],["2023-03-27",78.12],["2023-03-28",78.65],["2023-03-29",78.28],["2023-03-30",79.27],["2023-03-31",79.77],["2023-04-03",84.93],["2023-04-04",84.94],["2023-04-05",84.99],["2023-04-06",85.12],["2023-04-10",84.18],["2023-04-11",85.61],["2023-04-12",87.33],["2023-04-13",86.09],["2023-04-14",86.31],["2023-04-17",84.76],["2023-04-18",84.77],["2023-04-19",83.12],["2023-04-20",81.1],["2023-04-21",81.66],["2023-04-24",82.73],["2023-04-25",80.77],["2023-04-26",77.69],["2023-04-27",78.37],["2023-04-28",79.54],["2023-05-01",79.31],["2023-05-02",75.32],["2023-05-03",72.33],["2023-05-04",72.5],["2023-05-05",75.3],["2023-05-08",77.01],["2023-05-09",77.44],["2023-05-10",76.41],["2023-05-11",74.98],["2023-05-12",74.17],["2023-05-15",75.23],["2023-05-16",74.91],["2023-05-17",76.96],["2023-05-18",75.86],["2023-05-19",75.58],["2023-05-22",75.99],["2023-05-23",76.84],["2023-05-24",78.36],["2023-05-25",76.26],["2023-05-26",76.95],["2023-05-30",73.54],["2023-05-31",72.66],["2023-06-01",74.28],["2023-06-02",76.13],["2023-06-05",76.71],["2023-06-06",76.29],["2023-06-07",76.95],["2023-06-08",75.96],["2023-06-09",74.79],["2023-06-12",71.84],["2023-06-13",74.29],["2023-06-14",73.2],["2023-06-15",75.67],["2023-06-16",76.61],["2023-06-20",75.9],["2023-06-21",77.12],["2023-06-22",74.14],["2023-06-23",73.85],["2023-06-26",74.18],["2023-06-27",72.26],["2023-06-28",74.03],["2023-06-29",74.34],["2023-06-30",74.9],["2023-07-03",74.65],["2023-07-05",76.65],["2023-07-06",76.52],["2023-07-07",78.47],["2023-07-10",77.69],["2023-07-11",79.4],["2023-07-12",80.11],["2023-07-13",81.36],["2023-07-14",79.87],["2023-07-17",78.5],["2023-07-18",79.63],["2023-07-19",79.46],["2023-07-20",79.64],["2023-07-21",81.07],["2023-07-24",82.74],["2023-07-25",83.64],["2023-07-26",82.92],["2023-07-27",84.24],["2023-07-28",84.99],["2023-07-31",85.56],["2023-08-01",84.91],["2023-08-02",83.2],["2023-08-03",85.14],["2023-08-04",86.24],["2023-08-07",85.34],["2023-08-08",86.17],["2023-08-09",87.55],["2023-08-10",86.4],["2023-08-11",86.81],["2023-08-14",86.21],["2023-08-15",84.89],["2023-08-16",83.45],["2023-08-17",84.12],["2023-08-18",84.8],["2023-08-21",84.46],["2023-08-22",84.03],["2023-08-23",83.21],["2023-08-24",83.36],["2023-08-25",84.48],["2023-08-28",84.42],["2023-08-29",85.49],["2023-08-30",85.86],["2023-08-31",86.86],["2023-09-01",88.55],["2023-09-05",90.04],["2023-09-06",90.6],["2023-09-07",89.92],["2023-09-08",90.65],["2023-09-11",90.64],["2023-09-12",92.06],["2023-09-13",91.88],["2023-09-14",93.7],["2023-09-15",93.93],["2023-09-18",94.43],["2023-09-19",94.34],["2023-09-20",93.53],["2023-09-21",93.3],["2023-09-22",93.27],["2023-09-25",93.29],["2023-09-26",93.96],["2023-09-27",96.55],["2023-09-28",95.38],["2023-09-29",95.31],["2023-10-02",90.71],["2023-10-03",90.92],["2023-10-04",85.81],["2023-10-05",84.07],["2023-10-06",84.58],["2023-10-09",88.15],["2023-10-10",87.65],["2023-10-11",85.82],["2023-10-12",86.0],["2023-10-13",90.89],["2023-10-16",89.65],["2023-10-17",89.9],["2023-10-18",91.5],["2023-10-19",92.38],["2023-10-20",92.16],["2023-10-23",89.83],["2023-10-24",88.07],["2023-10-25",90.13],["2023-10-26",87.93],["2023-10-27",90.48],["2023-10-30",87.45],["2023-10-31",87.41],["2023-11-01",84.63],["2023-11-02",86.85],["2023-11-03",84.89],["2023-11-06",85.18],["2023-11-07",81.61],["2023-11-08",79.54],["2023-11-09",80.01],["2023-11-10",81.43],["2023-11-13",82.52],["2023-11-14",82.47],["2023-11-15",81.18],["2023-11-16",77.42],["2023-11-17",80.61],["2023-11-20",82.32],["2023-11-21",82.45],["2023-11-22",81.96],["2023-11-23",81.37],["2023-11-24",80.58],["2023-11-27",79.98],["2023-11-28",81.68],["2023-11-29",83.1],["2023-11-30",82.83],["2023-12-01",78.88],["2023-12-04",78.03],["2023-12-05",77.2],["2023-12-06",74.3],["2023-12-07",74.05],["2023-12-08",75.84],["2023-12-11",76.03],["2023-12-12",73.24],["2023-12-13",74.26],["2023-12-14",76.61],["2023-12-15",76.55],["2023-12-18",77.95],["2023-12-19",79.23],["2023-12-20",79.7],["2023-12-21",79.39],["2023-12-22",79.07],["2023-12-26",81.07],["2023-12-27",79.65],["2023-12-28",78.39],["2023-12-29",77.04],["2024-01-02",75.89],["2024-01-03",78.25],["2024-01-04",77.59],["2024-01-05",78.76],["2024-01-08",76.12],["2024-01-09",77.59],["2024-01-10",76.8],["2024-01-11",77.41],["2024-01-12",78.29],["2024-01-16",78.29],["2024-01-17",77.88],["2024-01-18",79.1],["2024-01-19",78.56],["2024-01-22",80.06],["2024-01-23",79.55],["2024-01-24",80.04],["2024-01-25",82.43],["2024-01-26",83.55],["2024-01-29",82.4],["2024-01-30",82.87],["2024-01-31",81.71],["2024-02-01",78.7],["2024-02-02",77.33],["2024-02-05",77.99],["2024-02-06",78.59],["2024-02-07",79.21],["2024-02-08",81.63],["2024-02-09",82.19],["2024-02-12",82.0],["2024-02-13",82.77],["2024-02-14",81.6],["2024-02-15",82.86],["2024-02-16",83.47],["2024-02-20",82.34],["2024-02-21",83.03],["2024-02-22",83.67],["2024-02-23",81.62],["2024-02-26",82.53],["2024-02-27",83.65],["2024-02-28",83.68],["2024-02-29",83.62],["2024-03-01",83.55],["2024-03-04",82.8],["2024-03-05",82.04],["2024-03-06",82.96],["2024-03-07",82.96],["2024-03-08",82.08],["2024-03-11",82.21],["2024-03-12",81.92],["2024-03-13",84.03],["2024-03-14",85.42],["2024-03-15",85.34],["2024-03-18",86.89],["2024-03-19",87.38],["2024-03-20",85.95],["2024-03-21",85.78],["2024-03-22",85.43],["2024-03-25",86.75],["2024-03-26",86.25],["2024-03-27",86.09],["2024-03-28",87.48],["2024-04-01",87.42],["2024-04-02",88.92],["2024-04-03",89.35],["2024-04-04",90.65],["2024-04-05",91.17],["2024-04-08",90.38],["2024-04-09",89.42],["2024-04-10",90.48],["2024-04-11",89.74],["2024-04-12",90.45],["2024-04-15",90.1],["2024-04-16",90.02],["2024-04-17",87.29],["2024-04-18",87.11],["2024-04-19",87.29],["2024-04-22",87.0],["2024-04-23",88.42],["2024-04-24",88.02],["2024-04-25",89.01],["2024-04-26",89.5],["2024-04-29",88.4],["2024-04-30",87.86],["2024-05-01",83.44],["2024-05-02",83.67],["2024-05-03",82.96],["2024-05-06",83.33],["2024-05-07",83.16],["2024-05-08",83.58],["2024-05-09",83.88],["2024-05-10",82.79],["2024-05-13",83.36],["2024-05-14",82.38],["2024-05-15",82.75],["2024-05-16",83.27],["2024-05-17",83.98],["2024-05-20",83.71],["2024-05-21",82.88],["2024-05-22",81.9],["2024-05-23",81.36],["2024-05-24",82.12],["2024-05-28",84.22],["2024-05-29",83.6],["2024-05-30",81.86],["2024-05-31",81.62],["2024-06-03",78.36],["2024-06-04",77.52],["2024-06-05",78.41],["2024-06-06",79.87],["2024-06-07",79.62],["2024-06-10",81.63],["2024-06-11",81.92],["2024-06-12",82.6],["2024-06-13",82.75],["2024-06-14",82.62],["2024-06-17",84.25],["2024-06-18",85.33],["2024-06-20",85.71],["2024-06-21",85.24],["2024-06-24",86.01],["2024-06-25",85.01],["2024-06-26",85.25],["2024-06-27",86.39],["2024-06-28",86.41],["2024-07-01",86.6],["2024-07-02",86.24],["2024-07-03",87.34],["2024-07-05",86.54],["2024-07-08",85.75],["2024-07-09",84.66],["2024-07-10",85.08],["2024-07-11",85.4],["2024-07-12",85.03],["2024-07-15",84.85],["2024-07-16",83.73],["2024-07-17",85.08],["2024-07-18",85.11],["2024-07-19",82.63],["2024-07-22",82.4],["2024-07-23",81.01],["2024-07-24",81.71],["2024-07-25",82.37],["2024-07-26",81.13],["2024-07-29",79.78],["2024-07-30",78.63],["2024-07-31",80.72],["2024-08-01",79.52],["2024-08-02",76.81],["2024-08-05",76.3],["2024-08-06",76.48],["2024-08-07",78.33],["2024-08-08",79.16],["2024-08-09",79.66],["2024-08-12",82.3],["2024-08-13",80.69],["2024-08-14",79.76],["2024-08-15",81.04],["2024-08-16",79.68],["2024-08-19",77.66],["2024-08-20",77.2],["2024-08-21",76.05],["2024-08-22",77.22],["2024-08-23",79.02],["2024-08-26",81.43],["2024-08-27",79.55],["2024-08-28",78.65],["2024-08-29",79.94],["2024-08-30",78.8],["2024-09-03",73.75],["2024-09-04",72.7],["2024-09-05",72.69],["2024-09-06",71.06],["2024-09-09",71.84],["2024-09-10",69.19],["2024-09-11",70.61],["2024-09-12",71.97],["2024-09-13",71.61],["2024-09-16",72.75],["2024-09-17",73.7],["2024-09-18",73.65],["2024-09-19",74.88],["2024-09-20",74.49],["2024-09-23",73.9],["2024-09-24",75.17],["2024-09-25",73.46],["2024-09-26",71.6],["2024-09-27",71.98],["2024-09-30",71.77],["2024-10-01",73.56],["2024-10-02",73.9],["2024-10-03",77.62],["2024-10-04",78.05],["2024-10-07",80.93],["2024-10-08",77.18],["2024-10-09",76.58],["2024-10-10",79.4],["2024-10-11",79.04],["2024-10-14",77.46],["2024-10-15",74.25],["2024-10-16",74.22],["2024-10-17",74.45],["2024-10-18",73.06],["2024-10-21",74.29],["2024-10-22",76.04],["2024-10-23",74.96],["2024-10-24",74.38],["2024-10-25",76.05],["2024-10-28",71.42],["2024-10-29",71.12],["2024-10-30",72.55],["2024-10-31",73.16],["2024-11-01",73.1],["2024-11-04",75.08],["2024-11-05",75.53],["2024-11-06",74.92],["2024-11-07",75.63],["2024-11-08",73.87],["2024-11-11",71.83],["2024-11-12",71.89],["2024-11-13",72.28],["2024-11-14",72.56],["2024-11-15",71.04],["2024-11-18",73.3],["2024-11-19",73.31],["2024-11-20",72.81],["2024-11-21",74.23],["2024-11-22",75.17],["2024-11-25",73.01],["2024-11-26",72.81],["2024-11-27",72.83],["2024-11-29",72.94],["2024-12-02",71.83],["2024-12-03",73.62],["2024-12-04",72.31],["2024-12-05",72.09],["2024-12-06",71.12],["2024-12-09",72.14],["2024-12-10",72.19],["2024-12-11",73.52],["2024-12-12",73.41],["2024-12-13",74.49],["2024-12-16",73.91],["2024-12-17",73.19],["2024-12-18",73.39],["2024-12-19",72.88],["2024-12-20",72.94],["2024-12-23",72.63],["2024-12-24",73.58],["2024-12-26",73.26],["2024-12-27",74.17],["2024-12-30",74.39],["2024-12-31",74.64],["2025-01-02",75.93],["2025-01-03",76.51],["2025-01-06",76.3],["2025-01-07",77.05],["2025-01-08",76.16],["2025-01-09",76.92],["2025-01-10",79.76],["2025-01-13",81.01],["2025-01-14",79.92],["2025-01-15",82.03],["2025-01-16",81.29],["2025-01-17",80.79],["2025-01-21",79.29],["2025-01-22",79.0],["2025-01-23",78.29],["2025-01-24",78.5],["2025-01-27",77.08],["2025-01-28",77.49],["2025-01-29",76.58],["2025-01-30",76.87],["2025-01-31",76.76],["2025-02-03",75.96],["2025-02-04",76.2],["2025-02-05",74.61],["2025-02-06",74.29],["2025-02-07",74.66],["2025-02-10",75.87],["2025-02-11",77.0],["2025-02-12",75.18],["2025-02-13",75.02],["2025-02-14",74.74],["2025-02-18",75.84],["2025-02-19",76.04],["2025-02-20",76.48],["2025-02-21",74.43],["2025-02-24",74.78],["2025-02-25",73.02],["2025-02-26",72.53],["2025-02-27",74.04],["2025-02-28",73.18],["2025-03-03",71.62],["2025-03-04",71.04],["2025-03-05",69.3],["2025-03-06",69.46],["2025-03-07",70.36],["2025-03-10",69.28],["2025-03-11",69.56],["2025-03-12",70.95],["2025-03-13",69.88],["2025-03-14",70.58],["2025-03-17",71.07],["2025-03-18",70.56],["2025-03-19",70.78],["2025-03-20",72.0],["2025-03-21",72.16],["2025-03-24",73.0],["2025-03-25",73.02],["2025-03-26",73.79],["2025-03-27",74.03],["2025-03-28",73.63],["2025-03-31",74.74],["2025-04-01",74.49],["2025-04-02",74.95],["2025-04-03",70.14],["2025-04-04",65.58],["2025-04-07",64.21],["2025-04-08",62.82],["2025-04-09",65.48],["2025-04-10",63.33],["2025-04-11",64.76],["2025-04-14",64.88],["2025-04-15",64.67],["2025-04-16",65.85],["2025-04-17",67.96],["2025-04-21",66.26],["2025-04-22",67.44],["2025-04-23",66.12],["2025-04-24",66.55],["2025-04-25",66.87],["2025-04-28",65.86],["2025-04-29",64.25],["2025-04-30",63.12],["2025-05-01",62.13],["2025-05-02",61.29],["2025-05-05",60.23],["2025-05-06",62.15],["2025-05-07",61.12],["2025-05-08",62.84],["2025-05-09",63.91],["2025-05-12",64.96],["2025-05-13",66.63],["2025-05-14",66.09],["2025-05-15",64.53],["2025-05-16",65.41],["2025-05-19",65.54],["2025-05-20",65.38],["2025-05-21",64.91],["2025-05-22",64.44],["2025-05-23",64.78],["2025-05-27",64.09],["2025-05-28",64.9],["2025-05-29",64.15],["2025-05-30",63.9],["2025-06-02",64.63],["2025-06-03",65.63],["2025-06-04",64.86],["2025-06-05",65.34],["2025-06-06",66.47],["2025-06-09",67.04],["2025-06-10",66.87],["2025-06-11",69.77],["2025-06-12",69.36],["2025-06-13",74.23],["2025-06-16",73.23],["2025-06-17",76.45],["2025-06-18",76.7],["2025-06-20",77.01],["2025-06-23",71.48],["2025-06-24",67.14],["2025-06-25",67.68],["2025-06-26",67.73],["2025-06-27",67.77],["2025-06-30",67.61],["2025-07-01",67.11],["2025-07-02",69.11],["2025-07-03",68.8],["2025-07-04",68.29],["2025-07-07",69.58],["2025-07-08",70.15],["2025-07-09",70.19],["2025-07-10",68.64],["2025-07-11",70.36],["2025-07-14",69.21],["2025-07-15",68.71],["2025-07-16",68.52],["2025-07-17",69.52],["2025-07-18",69.28],["2025-07-21",69.21],["2025-07-22",68.59],["2025-07-23",68.51],["2025-07-24",69.18],["2025-07-25",68.44],["2025-07-28",70.04],["2025-07-29",72.51],["2025-07-30",73.24],["2025-07-31",72.53],["2025-08-01",69.67],["2025-08-04",68.76],["2025-08-05",67.64],["2025-08-06",66.89],["2025-08-07",66.43],["2025-08-08",66.59],["2025-08-11",66.63],["2025-08-12",66.12],["2025-08-13",65.63],["2025-08-14",66.84],["2025-08-15",65.85],["2025-08-18",66.6],["2025-08-19",65.79],["2025-08-20",66.84],["2025-08-21",67.67],["2025-08-22",67.73],["2025-08-25",68.8],["2025-08-26",67.22],["2025-08-27",68.05],["2025-08-28",68.62],["2025-08-29",68.12],["2025-09-02",69.14],["2025-09-03",67.6],["2025-09-04",66.99],["2025-09-05",65.5],["2025-09-08",66.02],["2025-09-09",66.39],["2025-09-10",67.49],["2025-09-11",66.37],["2025-09-12",66.99],["2025-09-15",67.44],["2025-09-16",68.47],["2025-09-17",67.95],["2025-09-18",67.44],["2025-09-19",66.68],["2025-09-22",66.57],["2025-09-23",67.63],["2025-09-24",69.31],["2025-09-25",69.42],["2025-09-26",70.13],["2025-09-29",67.97],["2025-09-30",67.02],["2025-10-01",65.35],["2025-10-02",64.11],["2025-10-03",64.53],["2025-10-06",65.47],["2025-10-07",65.45],["2025-10-08",66.25],["2025-10-09",65.22],["2025-10-10",62.73],["2025-10-13",63.32],["2025-10-14",62.39],["2025-10-15",61.91],["2025-10-16",61.06],["2025-10-17",61.29],["2025-10-20",61.01],["2025-10-21",61.32],["2025-10-22",62.59],["2025-10-23",65.99],["2025-10-24",65.94],["2025-10-27",65.62],["2025-10-28",64.4],["2025-10-29",64.92],["2025-10-30",65.0],["2025-10-31",65.07],["2025-11-03",64.89],["2025-11-04",64.44],["2025-11-05",63.52],["2025-11-06",63.38],["2025-11-07",63.63],["2025-11-10",64.06],["2025-11-11",65.16],["2025-11-12",62.71],["2025-11-13",63.01],["2025-11-14",64.39],["2025-11-17",64.2],["2025-11-18",64.89],["2025-11-19",63.51],["2025-11-20",63.38],["2025-11-21",62.56],["2025-11-24",63.37],["2025-11-25",62.48],["2025-11-26",63.13],["2025-11-28",63.2],["2025-12-01",63.17],["2025-12-02",62.45],["2025-12-03",62.67],["2025-12-04",63.26],["2025-12-05",63.75],["2025-12-08",62.49],["2025-12-09",61.94],["2025-12-10",62.21],["2025-12-11",61.28],["2025-12-12",61.12],["2025-12-15",60.56],["2025-12-16",58.92],["2025-12-17",59.68],["2025-12-18",59.82],["2025-12-19",60.47],["2025-12-22",62.07],["2025-12-23",62.38],["2025-12-24",62.24],["2025-12-26",60.64],["2025-12-29",61.94],["2025-12-30",61.92],["2025-12-31",60.85],["2026-01-02",60.75],["2026-01-05",61.76],["2026-01-06",60.7],["2026-01-07",59.96],["2026-01-08",61.99],["2026-01-09",63.34],["2026-01-12",63.87],["2026-01-13",65.47],["2026-01-14",66.52],["2026-01-15",63.76],["2026-01-16",64.13],["2026-01-20",64.92],["2026-01-21",65.24],["2026-01-22",64.06],["2026-01-23",65.88],["2026-01-26",65.59],["2026-01-27",67.57],["2026-01-28",68.4],["2026-01-29",70.71],["2026-01-30",70.69],["2026-02-02",66.3],["2026-02-03",67.33],["2026-02-04",69.46],["2026-02-05",67.55],["2026-02-06",68.05],["2026-02-09",69.04],["2026-02-10",68.8],["2026-02-11",69.4],["2026-02-12",67.52],["2026-02-13",67.75],["2026-02-17",67.42],["2026-02-18",70.35],["2026-02-19",71.66],["2026-02-20",71.76],["2026-02-23",71.49],["2026-02-24",70.77],["2026-02-25",70.85],["2026-02-26",70.75],["2026-02-27",72.48],["2026-03-02",77.74],["2026-03-03",81.4],["2026-03-04",81.4],["2026-03-05",85.41],["2026-03-06",92.69],["2026-03-09",98.96],["2026-03-10",87.8],["2026-03-11",91.98],["2026-03-12",100.46],["2026-03-13",103.14],["2026-03-16",100.21],["2026-03-17",103.42],["2026-03-18",107.38],["2026-03-19",108.65],["2026-03-20",112.19],["2026-03-23",99.94],["2026-03-24",104.49],["2026-03-25",102.22],["2026-03-26",108.01],["2026-03-27",112.57],["2026-03-30",112.78],["2026-03-31",118.35],["2026-04-01",101.16],["2026-04-02",109.03],["2026-04-06",109.77],["2026-04-07",109.27],["2026-04-08",94.75],["2026-04-09",95.92],["2026-04-10",95.2],["2026-04-13",99.36],["2026-04-14",94.79],["2026-04-15",94.93],["2026-04-16",99.39],["2026-04-17",90.38],["2026-04-20",95.48],["2026-04-21",98.48],["2026-04-22",101.91],["2026-04-23",105.07],["2026-04-24",105.33],["2026-04-27",108.23],["2026-04-28",111.26],["2026-04-29",118.03],["2026-04-30",114.01],["2026-05-01",108.17],["2026-05-04",114.44],["2026-05-05",109.87],["2026-05-06",101.27],["2026-05-07",100.06],["2026-05-08",101.29],["2026-05-11",104.21],["2026-05-12",107.77],["2026-05-13",105.63],["2026-05-14",105.72],["2026-05-15",109.26],["2026-05-18",112.1],["2026-05-19",111.28],["2026-05-20",105.02],["2026-05-21",102.58],["2026-05-22",103.54],["2026-05-26",99.58],["2026-05-27",94.29],["2026-05-28",93.71],["2026-05-29",92.05],["2026-06-01",94.98],["2026-06-02",96.0],["2026-06-03",97.81],["2026-06-04",95.03],["2026-06-05",93.09],["2026-06-08",94.25],["2026-06-09",91.45],["2026-06-10",93.1],["2026-06-11",90.38],["2026-06-12",87.33],["2026-06-15",83.17],["2026-06-16",78.96],["2026-06-17",79.55],["2026-06-18",79.85],["2026-06-22",77.9],["2026-06-23",77.08],["2026-06-24",73.74],["2026-06-25",75.26],["2026-06-26",71.99],["2026-06-29",73.15],["2026-06-30",72.92],["2026-07-01",71.57],["2026-07-02",71.8],["2026-07-06",71.99],["2026-07-07",74.16],["2026-07-08",78.02],["2026-07-09",76.3],["2026-07-10",76.01],["2026-07-13",83.3],["2026-07-14",84.73],["2026-07-15",84.95],["2026-07-16",84.23],["2026-07-17",88.1],["2026-07-20",89.22],["2026-07-21",91.01],["2026-07-22",94.07],["2026-07-23",100.69],["2026-07-24",96.78],["2026-07-27",88.36],["2026-07-28",84.09],["2026-07-29",90.74],["2026-07-30",89.03],["2026-07-31",90.12],["2026-08-03",83.77],["2026-08-04",79.36],["2026-08-05",79.45],["2026-08-06",82.49],["2026-08-07",83.55],["2026-08-10",87.72],["2026-08-11",88.91],["2026-08-12",88.98],["2026-08-13",87.07],["2026-08-14",88.52],["2026-08-17",90.87],["2026-08-18",91.02],["2026-08-19",91.62],["2026-08-20",93.78],["2026-08-21",94.39],["2026-08-24",92.17],["2026-08-25",88.58],["2026-08-26",87.84],["2026-08-27",89.7],["2026-08-28",89.31],["2026-08-31",90.49],["2026-09-01",94.65],["2026-09-02",95.63],["2026-09-03",95.52],["2026-09-04",96.28],["2026-09-08",97.92],["2026-09-09",101.21],["2026-09-10",107.63],["2026-09-11",104.61],["2026-09-14",105.68],["2026-09-15",108.75],["2026-09-16",105.83],["2026-09-17",104.82],["2026-09-18",103.87],["2026-09-21",100.34],["2026-09-22",99.25],["2026-09-23",103.08],["2026-09-24",106.6],["2026-09-25",97.44]],"lithium":[["2025-09-25",73750,"d"],["2026-05-20",179000,"x"],["2026-05-21",182000,"x"],["2026-05-22",178000,"x"],["2026-05-25",183250,"x"],["2026-05-26",180000,"x"],["2026-05-27",177000,"x"],["2026-05-28",175500,"x"],["2026-05-29",177500,"x"],["2026-06-01",179000,"x"],["2026-06-02",175750,"x"],["2026-06-03",170500,"x"],["2026-06-04",168250,"x"],["2026-06-05",163000,"x"],["2026-06-08",163750,"x"],["2026-06-09",163750,"x"],["2026-06-10",165750,"x"],["2026-06-11",166500,"x"],["2026-06-12",170500,"x"],["2026-06-15",170500,"x"],["2026-06-16",169000,"x"],["2026-06-17",169500,"x"],["2026-06-18",167250,"x"],["2026-06-22",157000,"x"],["2026-06-23",158500,"x"],["2026-06-24",157500,"x"],["2026-06-25",157000,"x"],["2026-06-26",152500,"x"],["2026-06-29",151750,"x"],["2026-06-30",156500,"x"],["2026-07-01",160000,"x"],["2026-07-02",162500,"x"],["2026-07-03",165250,"x"],["2026-07-06",165250,"x"],["2026-07-07",164500,"x"],["2026-07-08",164000,"x"],["2026-07-09",158500,"x"],["2026-07-10",155000,"x"],["2026-07-13",154000,"x"],["2026-07-14",154000,"x"],["2026-07-15",154000,"x"],["2026-07-16",151000,"x"],["2026-07-17",152000,"x"],["2026-08-25",157000,"d"],["2026-09-24",135200,"t"],["2026-09-25",133150,"t"]]}</script>
+<script id="baked" type="application/json">{"version":1790467200000,"sections":{},"rows":{"lithium":{"2026-09-27":[133170,null,null,null,null]}},"hideSeed":{},"hiddenSections":{}}</script>
+<script>
+(function(){
+// Captured before anything renders: "Save dashboard file" rewrites the baked data in this copy.
+const PRISTINE = '<!doctype html>\n' + document.documentElement.outerHTML;
+const SEED = JSON.parse(document.getElementById('seed').textContent);
+const BAKED = (()=>{ try{ return JSON.parse(document.getElementById('baked').textContent)||{}; }catch(e){ return {}; } })();
+const STANDALONE = !(window.claude && window.claude.use);
+const LOCAL_KEY = 'ct-local';
+const DAY = 864e5;
+const C = {
+  copper:{name:'Copper',unit:'USD / lb',cur:'$',dp:4,color:'--copper',src:'COMEX'},
+  lithium:{name:'Lithium Carbonate',short:'Lithium',unit:'CNY / tonne',cur:'¥',dp:0,color:'--lithium',src:'TE'},
+  wti:{name:'Crude Oil WTI',short:'WTI Crude',unit:'USD / bbl',cur:'$',dp:2,color:'--wti',src:'NYMEX'},
+  brent:{name:'Brent Crude',short:'Brent',unit:'USD / bbl',cur:'$',dp:2,color:'--brent',src:'ICE'}
+};
+const BUILTIN = ['copper','lithium','wti','brent'];
+let ORDER = [...BUILTIN];
+const SWATCH = ['--s1','--s2','--s3','--s4','--s5','--s6'];
+let custom = {};          // imported sections, db "sections/<key>"
+let hiddenSections = {};  // built-in key -> true when removed from the dashboard
+function rebuildOrder(){
+  for (const k of Object.keys(C)) if (C[k].custom && !custom[k]) delete C[k];
+  for (const [k,m] of Object.entries(custom)) C[k]={name:m.name,short:m.name,unit:m.unit||'',cur:m.cur||'',dp:Number.isInteger(m.dp)?m.dp:2,color:SWATCH.includes(m.color)?m.color:SWATCH[0],src:'sheet',custom:true};
+  ORDER = BUILTIN.filter(k=>!hiddenSections[k]).concat(Object.keys(custom).sort((a,b)=>(custom[a].order||0)-(custom[b].order||0)));
+  if (!ORDER.length){ hiddenSections={}; ORDER=[...BUILTIN]; }
+  if (!ORDER.includes(state.key)){ state.key=ORDER[0]; state.view=null; }
+}
+const ICON = { expand:'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>',
+               shrink:'<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2.5V6H2.5M13.5 6H10V2.5M10 13.5V10h3.5M2.5 10H6v3.5"/></svg>' };
+const RANGES = [['1W',7],['1M','1m'],['3M','3m'],['6M','6m'],['YTD','ytd'],['1Y','1y'],['5Y','5y'],['All','all']];
+const SRC_LABEL = {x:'your sheet',d:'derived',t:'TE',m:'manual'};
+
+const ms = s => { const [y,m,d] = s.split('-').map(Number); return Date.UTC(y,m-1,d); };
+const iso = t => new Date(t).toISOString().slice(0,10);
+const store = { get(k){ try{return localStorage.getItem(k);}catch(e){return null;} }, set(k,v){ try{localStorage.setItem(k,v);}catch(e){} } };
+
+let manual = {};           // key -> {date: {price,id}}
+let state = { key: 'copper', range: '1Y', desc: true, view: null };
+const hk = (location.hash||'').slice(1); if (C[hk]) state.key = hk; else if (C[store.get('ct-key')]) state.key = store.get('ct-key');
+if (RANGES.some(r=>r[0]===store.get('ct-range'))) state.range = store.get('ct-range');
+const calc = { method: store.get('ct-method')==='sessions' ? 'sessions' : 'calendar', fy: Math.min(12,Math.max(1,+store.get('ct-fy')||1)) };
+
+let hideSeed = {};         // key -> true when the viewer chose "use only my data"
+try{ hideSeed = JSON.parse(store.get('ct-hide')||'{}')||{}; hiddenSections = JSON.parse(store.get('ct-hidesec')||'{}')||{}; }catch(e){}
+function series(key){
+  const base = (hideSeed[key] || !SEED[key] ? [] : SEED[key]).map(r => ({d:r[0], t:ms(r[0]), p:r[1], s: r[2] || 'y'}));
+  const map = new Map(base.map(r=>[r.d,r]));
+  for (const [d,v] of Object.entries(manual[key]||{})) map.set(d,{d,t:ms(d),p:v.price,s:'m',id:v.id,ov:v.ov});
+  const arr = [...map.values()].sort((a,b)=>a.t-b.t);
+  arr.forEach((r,i)=>{ r.i=i; });
+  return arr;
+}
+function idxAtOrBefore(arr,t){ let lo=0,hi=arr.length-1,ans=-1; while(lo<=hi){const m=(lo+hi)>>1; if(arr[m].t<=t){ans=m;lo=m+1;} else hi=m-1;} return ans; }
+function shiftMonths(t,n){ const d=new Date(t); const y=d.getUTCFullYear(), m=d.getUTCMonth()+n, day=d.getUTCDate(); const last=new Date(Date.UTC(y,m+1,0)).getUTCDate(); return Date.UTC(y,m,Math.min(day,last)); }
+/* % change: (Price today − Reference close) ÷ Reference close.
+   The method decides which close is the reference; a manual value always wins. */
+const PCT = ['day','week','month','year'];
+const PCT_LABEL = {day:'Day',week:'Week',month:'Month',year:'Year',fytd:'YTD'};
+const SESS = {day:1,week:5,month:21,year:252};
+const TOL = {week:4,month:7,year:12};
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fyStartFor(t){ const d=new Date(t), m=calc.fy-1; let y=d.getUTCFullYear(); if(d.getUTCMonth()<m) y--; return Date.UTC(y,m,1); }
+function refFor(arr,i,m){
+  const t=arr[i].t;
+  if (m==='fytd'){ const target=fyStartFor(t)-DAY, j=idxAtOrBefore(arr,target); if(j<0||arr[j].t<target-12*DAY) return null; return {j, rule:`last close before the financial year began (${fmtDate(target+DAY)})`}; }
+  if (m==='day'){ if(i<1||t-arr[i-1].t>7*DAY) return null; return {j:i-1, rule:'previous trading session'}; }
+  if (calc.method==='sessions'){ const n=SESS[m], j=i-n; if(j<0) return null; if((t-arr[j].t)/DAY > {week:7,month:30.4,year:365}[m]*1.5) return null; return {j, rule:`${n} trading sessions back`}; }
+  const target = m==='week' ? t-7*DAY : shiftMonths(t, m==='month'?-1:-12);
+  const j=idxAtOrBefore(arr,target); if(j<0||j>=i||arr[j].t<target-TOL[m]*DAY) return null;
+  return {j, rule: arr[j].t===target ? `same date one ${m} earlier` : `${fmtDate(target)} had no close (weekend, holiday or missing) → last close before it`};
+}
+function changes(arr,i){
+  const r=arr[i], out={};
+  for (const m of [...PCT,'fytd']){
+    if (r.ov && r.ov[m]!=null){ out[m]={v:r.ov[m],manual:true}; continue; }
+    const ref=refFor(arr,i,m);
+    out[m] = ref ? {v:r.p/arr[ref.j].p-1, ref:arr[ref.j], rule:ref.rule} : {v:null};
+  }
+  return out;
+}
+function formula(key,r,c,m){
+  const lab = m==='fytd' ? fyLabel() : PCT_LABEL[m];
+  if (c.manual) return `${lab}: ${fmtPct(c.v)} entered manually (overrides the calculation)`;
+  if (c.v==null) return `${lab}: no close available for the reference date`;
+  return `${lab}: (${fmtP(key,r.p)} − ${fmtP(key,c.ref.p)}) ÷ ${fmtP(key,c.ref.p)} = ${fmtPct(c.v)} · vs ${fmtDate(c.ref.t)} close — ${c.rule}`;
+}
+const fyLabel = () => calc.fy===1 ? 'YTD' : 'FYTD';
+function rangeStart(last,code){
+  if (typeof code==='number') return last-code*DAY;
+  if (code==='ytd') return Date.UTC(new Date(last).getUTCFullYear(),0,1);
+  if (code==='all') return -Infinity;
+  const n={'1m':1,'3m':3,'6m':6,'1y':12,'5y':60}[code]; return shiftMonths(last,-n);
+}
+const fmtP = (key,v) => (v==null?'—': v.toLocaleString('en-US',{minimumFractionDigits:C[key].dp,maximumFractionDigits:C[key].dp}));
+const fmtPct = v => v==null ? '—' : (v>0?'+':'')+(v*100).toFixed(2)+'%';
+const cls = v => v==null ? 'na' : v>0.00005 ? 'up' : v<-0.00005 ? 'down' : 'flat';
+const pill = v => v==null ? '<span class="pill flat">—</span>' : `<span class="pill ${cls(v)}">${v>0.00005?'▲':v<-0.00005?'▼':'■'} ${fmtPct(v).replace('+','')}</span>`;
+const fmtDate = (t,opt) => new Date(t).toLocaleDateString('en-GB',Object.assign({timeZone:'UTC'},opt||{day:'2-digit',month:'short',year:'numeric'}));
+const cssv = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- tiles ---------- */
+function renderTiles(){
+  const el=document.getElementById('tiles'); el.innerHTML='';
+  let latest=0;
+  for (const key of ORDER){
+    const arr=series(key), i=arr.length-1;
+    const b=document.createElement('button'); b.type='button'; b.className='tile'; b.style.setProperty('--c',`var(${C[key].color})`);
+    b.setAttribute('aria-pressed', String(key===state.key));
+    b.addEventListener('click',()=>{ if(state.key!==key) state.view=null; state.key=key; store.set('ct-key',key); render(); });
+    el.appendChild(b);
+    if (!arr.length){ b.innerHTML=`<span class="nm"><i></i>${C[key].short||C[key].name}</span><span></span><span class="unit">${C[key].unit}</span><span class="px empty">No data yet</span>`; continue; }
+    const ch=changes(arr,i); latest=Math.max(latest,arr[i].t);
+    const start=shiftMonths(arr[i].t,-3), pts=arr.filter(r=>r.t>=start);
+    let spark='';
+    if (pts.length>1){ const mn=Math.min(...pts.map(r=>r.p)), mx=Math.max(...pts.map(r=>r.p)), t0=pts[0].t, t1=pts[pts.length-1].t;
+      const xy=pts.map(r=>[((r.t-t0)/(t1-t0||1))*200, 30-((r.p-mn)/((mx-mn)||1))*26]);
+      spark=`<svg viewBox="0 0 200 34" preserveAspectRatio="none" aria-hidden="true"><polyline fill="none" stroke="var(${C[key].color})" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round" points="${xy.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')}"/><circle cx="${xy[xy.length-1][0]}" cy="${xy[xy.length-1][1]}" r="2.5" fill="var(${C[key].color})"/></svg>`; }
+    b.innerHTML=`<span class="nm"><i></i>${C[key].short||C[key].name}</span><span class="chg">${pill(ch.day.v)}</span><span class="unit">${C[key].unit} · ${fmtDate(arr[i].t,{day:'numeric',month:'short'})}</span><span class="px num">${C[key].cur}${fmtP(key,arr[i].p)}</span>${spark}`;
+  }
+  const add=document.createElement('button'); add.type='button'; add.className='tile add'; add.innerHTML='<span>+ Import Excel</span><small>Each sheet becomes a section</small>'; add.addEventListener('click',openPicker); el.appendChild(add);
+  document.getElementById('asof').textContent= latest ? 'Latest close · '+fmtDate(latest) : '';
+}
+
+/* ---------- ranges ---------- */
+function renderRanges(){
+  const el=document.getElementById('ranges'); el.innerHTML='';
+  for (const [lab] of RANGES){ const b=document.createElement('button'); b.type='button'; b.textContent=lab; b.setAttribute('aria-pressed',String(!state.view&&lab===state.range));
+    b.addEventListener('click',()=>{ state.range=lab; state.view=null; store.set('ct-range',lab); render(); }); el.appendChild(b); }
+}
+
+/* ---------- chart ---------- */
+// Visible window: a range button, or a custom zoom (state.view = [t0,t1]) set by drag, pinch, wheel or the overview strip.
+function win(key){
+  const arr=series(key); if(!arr.length) return null;
+  const first=arr[0].t, last=arr[arr.length-1].t;
+  if (state.view){ const t0=Math.max(first,state.view[0]), t1=Math.min(last,state.view[1]);
+    if (t1-t0>=2*DAY) return {t0,t1,first,last,custom:true,label:`${fmtDate(t0,{day:'numeric',month:'short',year:'2-digit'})} – ${fmtDate(t1,{day:'numeric',month:'short',year:'2-digit'})}`}; state.view=null; }
+  return {t0:Math.max(first,rangeStart(last,RANGES.find(r=>r[0]===state.range)[1])), t1:last, first, last, custom:false, label:state.range};
+}
+let chartCtx=null, navCtx=null;
+function niceTicks(mn,mx,n){ const span=mx-mn||Math.abs(mx)||1; const raw=span/n; const mag=Math.pow(10,Math.floor(Math.log10(raw))); const f=raw/mag; const step=(f<1.5?1:f<3?2:f<7?5:10)*mag; const out=[]; for(let v=Math.ceil(mn/step)*step; v<=mx+1e-9; v+=step) out.push(+v.toFixed(10)); return {ticks:out,step}; }
+function timeTicks(t0,t1){
+  const span=(t1-t0)/DAY, out=[]; const d0=new Date(t0);
+  if (span<=16){ for(let t=Date.UTC(d0.getUTCFullYear(),d0.getUTCMonth(),d0.getUTCDate()); t<=t1; t+=DAY*(span<=8?1:2)) if(t>=t0) out.push([t,fmtDate(t,{day:'numeric',month:'short'})]); return out; }
+  if (span<=50){ for(let t=Date.UTC(d0.getUTCFullYear(),d0.getUTCMonth(),d0.getUTCDate()); t<=t1; t+=DAY*7) if(t>=t0) out.push([t,fmtDate(t,{day:'numeric',month:'short'})]); return out; }
+  const stepM = span<=220?1: span<=420?2: span<=800?3: 12;
+  let y=d0.getUTCFullYear(), m=d0.getUTCMonth()+1; if(stepM===12){y+=1;m=0;} else { while(m%stepM) m++; }
+  for(let t=Date.UTC(y,m,1); t<=t1; ){ const d=new Date(t); out.push([t, stepM===12? String(d.getUTCFullYear()) : (d.getUTCMonth()===0 ? String(d.getUTCFullYear()) : fmtDate(t,{month:'short'}))]); t=Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+stepM,1); }
+  return out;
+}
+const presenting = () => document.getElementById('cpanel').classList.contains('present');
+function renderChart(){
+  const svg=document.getElementById('chart'), wrap=document.getElementById('cwrap');
+  const W=Math.max(280, wrap.clientWidth-20), H = presenting() ? Math.max(300, window.innerHeight-300) : (W<560 ? 280 : 400);
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('height',H);
+  const oil = (state.key==='wti'||state.key==='brent') && ORDER.includes('wti') && ORDER.includes('brent');
+  const keys = oil ? ['wti','brent'] : [state.key];
+  const w = win(state.key);
+  document.getElementById('zReset').hidden = !(w&&w.custom);
+  if (!w){ chartCtx=null; navCtx=null; document.getElementById('legend').hidden=true; document.getElementById('nav').innerHTML='';
+    svg.innerHTML=`<text x="${W/2}" y="${H/2-6}" text-anchor="middle" style="font-family:var(--display);font-size:15px;fill:var(--ink2)">No ${esc(C[state.key].name)} prices yet</text><text x="${W/2}" y="${H/2+16}" text-anchor="middle" style="font-family:var(--display);font-size:12px">Add entries or paste from Excel below</text>`;
+    return; }
+  // points inside the window, plus one neighbour each side so lines run to the edges
+  const sets = keys.map(k=>{ const a=series(k); let i0=idxAtOrBefore(a,w.t0); if(i0<0) i0=0; let i1=a.findIndex(r=>r.t>w.t1); if(i1<0) i1=a.length-1;
+      const pts=a.slice(i0,i1+1); return {k, pts, inside: pts.filter(r=>r.t>=w.t0&&r.t<=w.t1)}; }).filter(s=>s.pts.length);
+  const scaleSrc = sets.flatMap(s=>s.inside.length?s.inside:s.pts);
+  const t0 = w.custom ? w.t0 : Math.min(...sets.flatMap(s=>s.inside).map(r=>r.t)), t1=w.t1;
+  let mn=Math.min(...scaleSrc.map(r=>r.p)), mx=Math.max(...scaleSrc.map(r=>r.p)); const pad=(mx-mn)*0.08||mx*0.02; mn-=pad; mx+=pad;
+  const {ticks,step}=niceTicks(mn,mx,5);
+  const L=4, R=W<560?58:72, T=12, B=26, pw=W-L-R, ph=H-T-B;
+  const x=t=> L + (t1===t0? pw/2 : (t-t0)/(t1-t0)*pw), y=v=> T + (1-(v-mn)/(mx-mn))*ph;
+  const yl=v=> Math.abs(v)>=1000? v.toLocaleString('en-US',{maximumFractionDigits:0}) : v.toFixed(step<0.1?2:step<1?1:0);
+  let g=`<defs><clipPath id="clip"><rect x="${L}" y="0" width="${pw}" height="${T+ph}"/></clipPath>${sets.map(s=>`<linearGradient id="gr-${s.k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(${C[s.k].color})" stop-opacity="${sets.length>1?0.10:0.22}"/><stop offset="1" stop-color="var(${C[s.k].color})" stop-opacity="0"/></linearGradient>`).join('')}</defs>`;
+  for (const v of ticks){ const yy=y(v); if(yy<T-1||yy>T+ph+1) continue; g+=`<line x1="${L}" x2="${L+pw}" y1="${yy}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/><text x="${L+pw+8}" y="${yy+4}">${yl(v)}</text>`; }
+  let lastLabelX=-99;
+  for (const [t,lab] of timeTicks(t0,t1)){ const xx=x(t); if(xx-lastLabelX<48||xx<L+16||xx>L+pw-16) continue; lastLabelX=xx; g+=`<line x1="${xx}" x2="${xx}" y1="${T+ph}" y2="${T+ph+4}" stroke="var(--line)"/><text x="${xx}" y="${H-8}" text-anchor="middle">${lab}</text>`; }
+  g+=`<line x1="${L}" x2="${L+pw}" y1="${T+ph}" y2="${T+ph}" stroke="var(--line)"/><g clip-path="url(#clip)">`;
+  const ordered=[...sets].sort((a,b)=>(a.k===state.key)-(b.k===state.key));
+  let tag='';
+  for (const s of ordered){
+    const col=`var(${C[s.k].color})`, pts=s.pts, sel=s.k===state.key;
+    const segs=[[pts[0]]], gaps=[];
+    for(let i=1;i<pts.length;i++){ if(pts[i].t-pts[i-1].t>12*DAY){ gaps.push([pts[i-1],pts[i]]); segs.push([pts[i]]); } else segs[segs.length-1].push(pts[i]); }
+    if (pts.length>1) g+=`<path d="M${x(pts[0].t).toFixed(1)},${T+ph} ${pts.map(r=>`L${x(r.t).toFixed(1)},${y(r.p).toFixed(1)}`).join(' ')} L${x(pts[pts.length-1].t).toFixed(1)},${T+ph}Z" fill="url(#gr-${s.k})"/>`;
+    for(const sg of segs) if(sg.length>1) g+=`<polyline fill="none" stroke="${col}" stroke-width="${sel?2:1.5}" stroke-opacity="${sel?1:.75}" stroke-linejoin="round" stroke-linecap="round" points="${sg.map(r=>x(r.t).toFixed(1)+','+y(r.p).toFixed(1)).join(' ')}"/>`;
+    for(const [a,b] of gaps) g+=`<line x1="${x(a.t)}" y1="${y(a.p)}" x2="${x(b.t)}" y2="${y(b.p)}" stroke="${col}" stroke-width="1.5" stroke-dasharray="3 4" stroke-opacity=".8"/>`;
+    if (s.inside.length<=90) for(const r of s.inside) if(r.s!=='y' || s.inside.length<=40) g+=`<circle cx="${x(r.t)}" cy="${y(r.p)}" r="${r.s==='d'?3.5:2.4}" fill="${r.s==='d'?'var(--surface)':col}" stroke="${col}" stroke-width="1.5"/>`;
+    const lp=s.inside[s.inside.length-1];
+    if (lp){ g+=`<circle cx="${x(lp.t)}" cy="${y(lp.p)}" r="4" fill="${col}" stroke="var(--surface)" stroke-width="2"/>`;
+      if (sel){ const ly=Math.min(Math.max(y(lp.p),T+8),T+ph-8); tag=`<rect x="${L+pw+2}" y="${ly-9}" width="${R-4}" height="18" rx="3" fill="${col}"/><text x="${L+pw+6}" y="${ly+4}" style="fill:var(--surface);font-weight:600">${fmtP(state.key,lp.p)}</text>`; } }
+  }
+  g+=`</g>${tag}`;
+  g+=`<g id="xh" visibility="hidden"><line id="xhl" y1="${T}" y2="${T+ph}" stroke="var(--muted)" stroke-dasharray="3 3"/>${sets.map(s=>`<circle id="xhd-${s.k}" r="4.5" fill="var(${C[s.k].color})" stroke="var(--surface)" stroke-width="2"/>`).join('')}</g>`;
+  g+=`<rect id="sel" y="${T}" height="${ph}" fill="var(--accent)" fill-opacity=".12" stroke="var(--accent)" stroke-opacity=".6" visibility="hidden"/>`;
+  g+=`<rect x="${L}" y="${T}" width="${pw}" height="${ph}" fill="transparent"/>`;
+  svg.innerHTML=g;
+  chartCtx={sets,x,y,L,pw,t0,t1,W,w};
+  const lg=document.getElementById('legend'); lg.hidden=!oil;
+  if (oil) lg.innerHTML=sets.map(s=>`<span style="--c:var(${C[s.k].color})"><i></i>${C[s.k].short}</span>`).join('');
+  svg.setAttribute('aria-label',`${C[state.key].name} price, ${w.label}`);
+  renderNav(w,W);
+}
+function renderNav(w,W){
+  const nav=document.getElementById('nav'), H=46, L=4, R=W<560?58:72, pw=W-L-R;
+  const a=series(state.key); nav.setAttribute('viewBox',`0 0 ${W} ${H}`); nav.setAttribute('height',H);
+  const T0=a[0].t, T1=a[a.length-1].t, mn=Math.min(...a.map(r=>r.p)), mx=Math.max(...a.map(r=>r.p));
+  const x=t=> L + (T1===T0? pw/2 : (t-T0)/(T1-T0)*pw), y=v=> 6 + (1-(v-mn)/((mx-mn)||1))*(H-12);
+  const step=Math.max(1,Math.floor(a.length/400)), pts=a.filter((r,i)=>i%step===0||i===a.length-1);
+  const xa=x(w.t0), xb=Math.max(x(w.t1),xa+2), col=`var(${C[state.key].color})`;
+  nav.innerHTML=`<rect x="${L}" y="0" width="${pw}" height="${H}" rx="6" fill="var(--surface2)" stroke="var(--line)"/>
+    <polyline fill="none" stroke="${col}" stroke-opacity=".7" stroke-width="1.2" points="${pts.map(r=>x(r.t).toFixed(1)+','+y(r.p).toFixed(1)).join(' ')}"/>
+    <rect x="${L}" y="0" width="${Math.max(0,xa-L)}" height="${H}" fill="var(--bg)" fill-opacity=".65"/>
+    <rect x="${xb}" y="0" width="${Math.max(0,L+pw-xb)}" height="${H}" fill="var(--bg)" fill-opacity=".65"/>
+    <rect x="${xa}" y="0.5" width="${xb-xa}" height="${H-1}" fill="var(--accent)" fill-opacity=".08" stroke="var(--accent)" stroke-width="1.2" rx="3" style="cursor:grab"/>
+    <rect x="${xa-4}" y="${H/2-11}" width="8" height="22" rx="3" fill="var(--surface)" stroke="var(--accent)" style="cursor:ew-resize"/>
+    <rect x="${xb-4}" y="${H/2-11}" width="8" height="22" rx="3" fill="var(--surface)" stroke="var(--accent)" style="cursor:ew-resize"/>
+    <text x="${L+pw+8}" y="${H/2+4}" style="font-family:var(--display);font-size:10.5px;fill:var(--muted)">${new Date(T0).getUTCFullYear()}–${String(new Date(T1).getUTCFullYear()).slice(2)}</text>`;
+  navCtx={x,L,pw,T0,T1,W};
+}
+function setView(t0,t1,full){
+  const w=win(state.key); if(!w) return; const minSpan=5*DAY, span=Math.max(minSpan,Math.min(t1-t0,w.last-w.first));
+  if (t0<w.first){ t0=w.first; t1=t0+span; } if (t1>w.last){ t1=w.last; t0=t1-span; } t0=Math.max(t0,w.first);
+  state.view = (t0<=w.first+DAY && t1>=w.last-DAY) ? null : [t0,t1];
+  if (full) render(); else schedule();
+}
+let raf=0; function schedule(){ if(raf) return; raf=requestAnimationFrame(()=>{ raf=0; renderRanges(); renderChart(); }); }
+function zoomBy(f,tc){ const w=win(state.key); if(!w) return; const vt0=chartCtx?chartCtx.t0:w.t0, vt1=w.t1; tc=tc??(vt0+vt1)/2; setView(tc-(tc-vt0)*f, tc+(vt1-tc)*f, true); }
+const toSvgX=(el,e,W)=>{ const r=el.getBoundingClientRect(); return (e.clientX-r.left)*(W/r.width); };
+
+function hover(ev){
+  if(!chartCtx) return; const sx=toSvgX(svgEl,ev,chartCtx.W); const {sets,x,y,L,pw,t0,t1,w}=chartCtx;
+  if (sx<L||sx>L+pw){ return leave(); }
+  const t=t0+(sx-L)/pw*(t1-t0);
+  const main=sets.find(s=>s.k===state.key)||sets[0]; const pool=main.inside.length?main.inside:main.pts;
+  let j=idxAtOrBefore(pool,t); if(j<0) j=0; if(j<pool.length-1 && Math.abs(pool[j+1].t-t)<Math.abs(pool[j].t-t)) j++;
+  const pt=pool[j]; const xx=x(pt.t);
+  document.getElementById('xh').setAttribute('visibility','visible');
+  const l=document.getElementById('xhl'); l.setAttribute('x1',xx); l.setAttribute('x2',xx);
+  let rows='';
+  for(const s of sets){ const k=idxAtOrBefore(s.pts,pt.t); const dot=document.getElementById('xhd-'+s.k); if(k<0||pt.t-s.pts[k].t>5*DAY){dot.setAttribute('visibility','hidden');continue;} const q=s.pts[k]; dot.setAttribute('visibility','visible'); dot.setAttribute('cx',x(q.t)); dot.setAttribute('cy',y(q.p));
+    rows+=`<div class="row" style="--c:var(${C[s.k].color})"><span><i></i>${C[s.k].short||C[s.k].name}</span><span>${C[s.k].cur}${fmtP(s.k,q.p)}</span></div>`; }
+  const base=pool[0], vs=pt.p/base.p-1;
+  rows+=`<div class="row"><span>vs ${fmtDate(base.t,{day:'numeric',month:'short',year:'2-digit'})}</span><span style="color:var(--${cls(vs)==='up'?'up':cls(vs)==='down'?'down':'ink2'})">${fmtPct(vs)}</span></div>`;
+  const tip=document.getElementById('tip'); tip.innerHTML=`<b>${fmtDate(pt.t,{weekday:'short',day:'2-digit',month:'short',year:'numeric'})}</b>${rows}`; tip.hidden=false;
+  const r=svgEl.getBoundingClientRect(), wr=document.getElementById('cwrap').getBoundingClientRect(); const px=xx*(r.width/chartCtx.W)+(r.left-wr.left);
+  const tw=tip.offsetWidth; tip.style.left=(px+14+tw>wr.width? px-14-tw : px+14)+'px'; tip.style.top='14px';
+}
+function leave(){ const xh=document.getElementById('xh'); if(xh) xh.setAttribute('visibility','hidden'); document.getElementById('tip').hidden=true; }
+const svgEl=document.getElementById('chart'), navEl=document.getElementById('nav');
+// drag across the chart to zoom into that stretch
+let brush=null;
+svgEl.addEventListener('pointerdown',e=>{ if(!chartCtx||e.button>0) return; brush={sx0:toSvgX(svgEl,e,chartCtx.W),id:e.pointerId,moved:false}; hover(e); });
+svgEl.addEventListener('pointermove',e=>{
+  if(!brush){ hover(e); return; }
+  const sx=toSvgX(svgEl,e,chartCtx.W), {L,pw}=chartCtx, a=Math.max(L,Math.min(brush.sx0,sx)), b=Math.min(L+pw,Math.max(brush.sx0,sx));
+  if (b-a>6){ if(!brush.moved){ brush.moved=true; try{ svgEl.setPointerCapture(brush.id); }catch(_){} } leave(); const s=document.getElementById('sel'); s.setAttribute('x',a); s.setAttribute('width',b-a); s.setAttribute('visibility','visible'); }
+  else if(!brush.moved) hover(e);
+});
+function endBrush(e){ if(!brush) return; const b=brush; brush=null; const s=document.getElementById('sel'); if(!b.moved||!chartCtx){ return; }
+  s.setAttribute('visibility','hidden'); const sx=toSvgX(svgEl,e,chartCtx.W), {L,pw,t0,t1}=chartCtx; const tt=v=>t0+(Math.max(L,Math.min(L+pw,v))-L)/pw*(t1-t0);
+  const ta=tt(Math.min(b.sx0,sx)), tb=tt(Math.max(b.sx0,sx)); if(tb-ta>=DAY) setView(ta,tb,true); }
+svgEl.addEventListener('pointerup',endBrush);
+svgEl.addEventListener('pointercancel',()=>{ brush=null; const s=document.getElementById('sel'); s&&s.setAttribute('visibility','hidden'); });
+svgEl.addEventListener('pointerleave',()=>{ if(!brush) leave(); });
+svgEl.addEventListener('dblclick',()=>{ if(state.view){ state.view=null; render(); } });
+// pinch on a trackpad, or Ctrl/⌘ + scroll
+svgEl.addEventListener('wheel',e=>{ if(!chartCtx||!(e.ctrlKey||e.metaKey)) return; e.preventDefault();
+  const {L,pw,t0,t1}=chartCtx, sx=toSvgX(svgEl,e,chartCtx.W), tc=t0+(Math.max(L,Math.min(L+pw,sx))-L)/pw*(t1-t0);
+  const f=Math.exp(Math.max(-0.5,Math.min(0.5,e.deltaY*0.01))); setView(tc-(tc-t0)*f, tc+(t1-tc)*f, false); clearTimeout(wheelT); wheelT=setTimeout(render,250); },{passive:false});
+let wheelT;
+// overview strip: drag the window to pan, its edges to resize, or click elsewhere to jump
+let nd=null;
+navEl.addEventListener('pointerdown',e=>{ if(!navCtx||!chartCtx) return; const {x,L,pw,T0,T1,W}=navCtx, sx=toSvgX(navEl,e,W), w=chartCtx.w;
+  const cur0=chartCtx.t0, cur1=w.t1, a=x(cur0), b=x(cur1); let mode='m', s0=cur0, s1=cur1;
+  if (Math.abs(sx-a)<=9) mode='l'; else if (Math.abs(sx-b)<=9) mode='r';
+  else if (sx<a||sx>b){ const tc=T0+(sx-L)/pw*(T1-T0), half=(cur1-cur0)/2; s0=tc-half; s1=tc+half; setView(s0,s1,false); }
+  nd={mode,sx0:sx,s0,s1}; try{ navEl.setPointerCapture(e.pointerId); }catch(_){} e.preventDefault(); });
+navEl.addEventListener('pointermove',e=>{ if(!nd) return; const {L,pw,T0,T1,W}=navCtx, dt=(toSvgX(navEl,e,W)-nd.sx0)/pw*(T1-T0);
+  if (nd.mode==='m') setView(nd.s0+dt, nd.s1+dt, false); else if (nd.mode==='l') setView(Math.min(nd.s0+dt, nd.s1-5*DAY), nd.s1, false); else setView(nd.s0, Math.max(nd.s1+dt, nd.s0+5*DAY), false); });
+const navEnd=()=>{ if(!nd) return; nd=null; render(); };
+navEl.addEventListener('pointerup',navEnd); navEl.addEventListener('pointercancel',navEnd);
+document.getElementById('zIn').addEventListener('click',()=>zoomBy(1/1.6));
+document.getElementById('zOut').addEventListener('click',()=>zoomBy(1.6));
+document.getElementById('zReset').addEventListener('click',()=>{ state.view=null; render(); });
+const cpanel=document.getElementById('cpanel'), zFull=document.getElementById('zFull');
+function setPresent(on){ cpanel.classList.toggle('present',on); document.body.classList.toggle('noscroll',on); zFull.setAttribute('aria-pressed',String(on)); zFull.title=on?'Exit full screen (Esc)':'Full screen';
+  zFull.innerHTML = on ? ICON.shrink : ICON.expand; renderChart(); }
+zFull.addEventListener('click',()=>setPresent(!presenting()));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&presenting()) setPresent(false); });
+window.addEventListener('resize',()=>{ if(presenting()) renderChart(); });
+
+/* ---------- header + stats ---------- */
+function renderHead(){
+  const key=state.key, arr=series(key), i=arr.length-1;
+  document.getElementById('ptitle').textContent=C[key].name;
+  if (!arr.length){
+    document.getElementById('pbig').textContent='—'; document.getElementById('pchg').innerHTML=''; document.getElementById('punit').textContent=C[key].unit;
+    document.getElementById('stats').innerHTML=['Actual','Day','Week','Month',fyLabel(),'Year','High','Low'].map(a=>`<div><dt>${a}</dt><dd class="na">—</dd></div>`).join(''); return; }
+  const ch=changes(arr,i), last=arr[i], w=win(key);
+  document.getElementById('pbig').textContent=C[key].cur+fmtP(key,last.p);
+  document.getElementById('pchg').innerHTML=pill(ch.day.v);
+  document.getElementById('punit').textContent=`${C[key].unit} · ${fmtDate(last.t)}`;
+  const pts=arr.filter(r=>r.t>=w.t0&&r.t<=w.t1); const src=pts.length?pts:[last];
+  const hi=src.reduce((a,b)=>b.p>a.p?b:a), lo=src.reduce((a,b)=>b.p<a.p?b:a);
+  const pc = m => [m==='fytd'?fyLabel():PCT_LABEL[m], fmtPct(ch[m].v)+(ch[m].manual?' ✎':''), cls(ch[m].v), formula(key,last,ch[m],m)];
+  const lab = w.custom ? 'View' : w.label;
+  const items=[['Actual',fmtP(key,last.p),'',''],pc('day'),pc('week'),pc('month'),pc('fytd'),pc('year'),[lab+' high',fmtP(key,hi.p),'',fmtDate(hi.t)],[lab+' low',fmtP(key,lo.p),'',fmtDate(lo.t)]];
+  document.getElementById('stats').innerHTML=items.map(([a,b,c,f])=>`<div title="${esc(f)}"><dt>${a}</dt><dd class="${c}">${b}</dd></div>`).join('');
+}
+
+/* ---------- sheet ---------- */
+let tableRows=[];
+function renderTable(){
+  const key=state.key, arr=series(key);
+  const w=win(key);
+  tableRows= w ? arr.filter(r=>r.t>=w.t0&&r.t<=w.t1).map(r=>({r,ch:changes(arr,r.i)})) : [];
+  renderDataPanel();
+  const rows = state.desc? [...tableRows].reverse() : tableRows;
+  document.getElementById('cap').textContent=`${C[key].name} | ${w?w.label:state.range} | ${C[key].unit}`;
+  document.getElementById('thPx').textContent=`Price (${C[key].unit.replace(' / ','/')})`;
+  document.getElementById('ttitle').textContent=`Price history`; document.getElementById('tcount').textContent=`${tableRows.length} rows`;
+  document.getElementById('bSort').textContent=state.desc?'Newest first':'Oldest first';
+  const n=tableRows.length;
+  document.getElementById('tbody').innerHTML=rows.map((o,k)=>{ const r=o.r, c=o.ch, sn=state.desc? n-k : k+1;
+    const td=m=>`<td class="${cls(c[m].v)}${c[m].manual?' ov':''}" title="${esc(formula(key,r,c[m],m))}">${fmtPct(c[m].v)}${c[m].manual?'<i aria-label="entered manually">✎</i>':''}</td>`;
+    const src = r.s==='y' ? `<span class="src">${C[key].src}</span>` : `<span class="src ${r.s==='m'?'manual':''}">${SRC_LABEL[r.s]}</span>${r.s==='m'?`<button class="rm" type="button" data-date="${r.d}" aria-label="Remove manual entry for ${r.d}" title="Remove this manual entry">×</button>`:''}`;
+    return `<tr data-i="${r.i}" tabindex="0" aria-expanded="false"><td class="sn">${sn}</td><td>${fmtDate(r.t,{day:'2-digit',month:'2-digit',year:'2-digit'}).replace(/\//g,'-')}</td><td>${C[key].cur} ${fmtP(key,r.p)}</td>${PCT.map(td).join('')}<td style="text-align:left">${src}</td></tr>`; }).join('')
+    || `<tr><td colspan="8" class="empty-row">No rows yet — click <b>Add entry</b> or <b>Paste from Excel</b>.</td></tr>`;
+}
+function toggleDetail(tr){
+  const open = tr.getAttribute('aria-expanded')==='true';
+  if (open){ tr.nextElementSibling?.classList.contains('detail') && tr.nextElementSibling.remove(); tr.setAttribute('aria-expanded','false'); return; }
+  const key=state.key, arr=series(key), i=+tr.dataset.i, r=arr[i], c=changes(arr,i);
+  const d=document.createElement('tr'); d.className='detail';
+  d.innerHTML=`<td colspan="8"><div>${PCT.map(m=>`<span>${esc(formula(key,r,c[m],m))}</span>`).join('')}<button class="btn" type="button" data-edit="${r.d}">Edit this day's values</button></div></td>`;
+  tr.after(d); tr.setAttribute('aria-expanded','true');
+}
+document.getElementById('bSort').addEventListener('click',()=>{ state.desc=!state.desc; renderTable(); });
+document.getElementById('tbody').addEventListener('keydown',e=>{ if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-i]')){ e.preventDefault(); toggleDetail(e.target); } });
+document.getElementById('tbody').addEventListener('click',async e=>{
+  const ed=e.target.closest('[data-edit]'); if(ed){ openAdd(ed.dataset.edit); return; }
+  const b=e.target.closest('.rm');
+  if(!b){ const tr=e.target.closest('tr[data-i]'); if(tr) toggleDetail(tr); return; }
+  try{ await removeEntry(state.key,b.dataset.date); }catch(err){ toast('Could not remove that price: '+(err.message||err.code)); } });
+
+function sheetText(sep){
+  const key=state.key; const head=['S. No','Date',`Price (${C[key].unit})`,'Day','Week','Month','Year','Source','Week ref date','Month ref date','Year ref date'];
+  const q=v=> sep===',' && /[",]/.test(v) ? `"${v.replace(/"/g,'""')}"` : v;
+  const lines=[head.map(q).join(sep)];
+  tableRows.forEach((o,k)=>{ const r=o.r,c=o.ch; lines.push([k+1, r.d, r.p, ...PCT.map(m=>c[m].v==null?'':(c[m].v*100).toFixed(2)+'%'), r.s==='y'?C[key].src:SRC_LABEL[r.s],
+    ...['week','month','year'].map(m=>c[m].manual?'manual':c[m].ref?c[m].ref.d:'')].map(v=>q(String(v))).join(sep)); });
+  return lines.join('\n');
+}
+document.getElementById('bCopy').addEventListener('click',async e=>{ const b=e.currentTarget, txt=sheetText('\t');
+  try{ await navigator.clipboard.writeText(txt); b.textContent='Copied — paste into Excel'; }
+  catch(err){ const s=window.getSelection(), rg=document.createRange(); rg.selectNodeContents(document.getElementById('sheet')); s.removeAllRanges(); s.addRange(rg); b.textContent='Table selected — press Ctrl/⌘+C'; }
+  setTimeout(()=>b.textContent='Copy for Excel',2600); });
+let downloads=null;
+document.getElementById('bCsv').addEventListener('click',async ()=>{ if(STANDALONE){ blobSave(`${(C[state.key].short||C[state.key].name).replace(/[^\w-]+/g,'-')}-${iso(Date.now())}.csv`, sheetText(','), 'text/csv'); return; } if(!downloads) return;
+  try{ await downloads.save({filename:`${state.key}-${state.range}-${iso(Date.now())}.csv`, data:sheetText(',')}); }catch(e){} });
+
+/* ---------- storage: rows are kept per section per year in db "data/<key>__<year>" ---------- */
+let chunkDocs = {};        // doc id -> {key, year, rows:{date:[price,day,week,month,year]}}
+let legacy = {};           // older one-row-per-doc entries (db "entries"), still read
+function rebuildManual(){
+  const m={};
+  for (const [k,byDate] of Object.entries(legacy)) for (const [d,v] of Object.entries(byDate)) (m[k]=m[k]||{})[d]=v;
+  for (const c of Object.values(chunkDocs)){ if(!c||!c.key||!c.rows) continue;
+    for (const [d,a] of Object.entries(c.rows)){ if(!Array.isArray(a)||!(a[0]>0)) continue; const ov={}; PCT.forEach((p,i)=>{ if(typeof a[i+1]==='number'&&isFinite(a[i+1])) ov[p]=a[i+1]; });
+      (m[c.key]=m[c.key]||{})[d]={price:a[0],ov,id:`${c.key}|${d}`}; } }
+  manual=m;
+}
+const yearOf = d => d.slice(0,4);
+async function writeChunk(id,key,year,rows){
+  if (Object.keys(rows).length){ chunkDocs[id]={key,year,rows}; await db.collection('data').doc(id).set({key,year:+year,rows}); }
+  else { delete chunkDocs[id]; await db.collection('data').doc(id).delete(); }
+}
+async function saveRows(key,rows){
+  if(!db){ manual[key]=manual[key]||{}; for(const r of rows) manual[key][r.d]={price:r.p,id:`${key}|${r.d}`,ov:r.ov||{}}; render(); return rows.length; }
+  const byYear={}; for(const r of rows) (byYear[yearOf(r.d)]=byYear[yearOf(r.d)]||[]).push(r);
+  for (const [y,rs] of Object.entries(byYear)){
+    const id=`${key}__${y}`, cur={...((chunkDocs[id]||{}).rows||{})};
+    for (const r of rs) cur[r.d]=[r.p, ...PCT.map(m=> r.ov&&r.ov[m]!=null ? r.ov[m] : null)];
+    await writeChunk(id,key,y,cur);
+  }
+  rebuildManual(); render(); return rows.length;
+}
+async function removeEntry(key,d){
+  if(!db){ if(manual[key]) delete manual[key][d]; render(); return; }
+  const id=`${key}__${yearOf(d)}`;
+  if (chunkDocs[id]&&chunkDocs[id].rows[d]){ const cur={...chunkDocs[id].rows}; delete cur[d]; await writeChunk(id,key,yearOf(d),cur); }
+  const lg=legacy[key]&&legacy[key][d]; if(lg){ await db.collection('entries').doc(lg.lid).delete(); delete legacy[key][d]; }
+  rebuildManual(); render();
+}
+async function deleteManual(keys){
+  const n=manualIds(keys).length;
+  if(!db){ for(const k of keys) delete manual[k]; return n; }
+  for (const [id,c] of Object.entries(chunkDocs)) if(keys.includes(c.key)){ await db.collection('data').doc(id).delete(); delete chunkDocs[id]; }
+  for (const k of keys){ for (const v of Object.values(legacy[k]||{})) await db.collection('entries').doc(v.lid).delete(); delete legacy[k]; }
+  rebuildManual(); return n;
+}
+
+/* ---------- standalone file: state lives in this browser, and can be written into a new copy of the file ---------- */
+function snapshotState(){
+  const rows={}; for(const [k,byDate] of Object.entries(manual)){ rows[k]={}; for(const [d,v] of Object.entries(byDate)) rows[k][d]=[v.price,...PCT.map(m=>v.ov&&v.ov[m]!=null?v.ov[m]:null)]; }
+  return {version:BAKED.version||0, sections:custom, rows, hideSeed, hiddenSections};
+}
+function applyState(s){
+  custom=s.sections&&typeof s.sections==='object'?s.sections:{}; hideSeed=s.hideSeed||{}; hiddenSections=s.hiddenSections||{}; manual={};
+  for(const [k,byDate] of Object.entries(s.rows||{})) for(const [d,a] of Object.entries(byDate||{})){ if(!Array.isArray(a)||!(a[0]>0)) continue;
+    const ov={}; PCT.forEach((m,i)=>{ if(typeof a[i+1]==='number'&&isFinite(a[i+1])) ov[m]=a[i+1]; }); (manual[k]=manual[k]||{})[d]={price:a[0],ov,id:`${k}|${d}`}; }
+}
+function saveLocal(){ if(!STANDALONE) return; try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(snapshotState())); }catch(e){} }
+function blobSave(name,data,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); }
+function saveDashboardFile(){
+  const s=snapshotState(); s.version=Date.now(); BAKED.version=s.version;
+  const json=JSON.stringify(s).replace(/</g,'\\u003c');
+  const html=PRISTINE.replace(/(<script id="baked" type="application\/json">)[\s\S]*?(<\/script>)/, (m,a,b)=>a+json+b);
+  blobSave(`Commodity-Tracker-${iso(Date.now())}.html`, html, 'text/html'); saveLocal();
+  toast('Dashboard file saved with your data — share that file.');
+}
+
+/* ---------- sections ---------- */
+async function createSection(meta){
+  const used=new Set(Object.values(custom).map(m=>m.color));
+  const color=SWATCH.find(s=>!used.has(s)) || SWATCH[Object.keys(custom).length % SWATCH.length];
+  const key='s'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  const doc={name:String(meta.name||'Untitled').slice(0,60), unit:String(meta.unit||'').slice(0,30), cur:String(meta.cur||'').slice(0,4), dp:meta.dp, color, order:Date.now(), from:String(meta.from||'').slice(0,120)};
+  custom[key]=doc; rebuildOrder();
+  if(db) await db.collection('sections').doc(key).set(doc);
+  return key;
+}
+async function removeSection(key){
+  const n=await deleteManual([key]);
+  if (C[key]&&C[key].custom){ delete custom[key]; if(db) await db.collection('sections').doc(key).delete(); }
+  else { hiddenSections[key]=true; await saveSettings(); }
+  if (state.key===key){ state.key=null; state.view=null; }
+  rebuildOrder(); return n;
+}
+
+/* ---------- add / paste ---------- */
+let db=null;
+const fAdd=document.getElementById('fAdd'), fPaste=document.getElementById('fPaste');
+function flash(id,txt,err){ const m=document.getElementById(id); m.textContent=txt; m.classList.toggle('err',!!err); }
+const parseNum = s => { const v=parseFloat(String(s).replace(/[^\d.\-]/g,'')); return isFinite(v)&&v>0? v : null; };
+const parsePctIn = s => { s=String(s||'').trim(); if(!s) return null; const v=parseFloat(s.replace(/[^\d.\-+]/g,'')); return isFinite(v)? v/100 : NaN; };
+function fillAdd(d){
+  const arr=series(state.key), j=arr.findIndex(r=>r.d===d);
+  document.getElementById('addPrice').value = j>=0 ? arr[j].p : '';
+  const ch = j>=0 ? changes(arr,j) : null;
+  for (const m of PCT){ const inp=document.getElementById('add_'+m); const c=ch&&ch[m];
+    inp.value = c&&c.manual ? (c.v*100).toFixed(2) : '';
+    inp.placeholder = c&&!c.manual&&c.v!=null ? `calc ${fmtPct(c.v)}` : 'auto'; }
+}
+function openAdd(d){
+  fPaste.hidden=true; fData.hidden=true; fAdd.hidden=false;
+  document.getElementById('addLbl').textContent=`${C[state.key].short||C[state.key].name} price (${C[state.key].unit})`;
+  const di=document.getElementById('addDate'); di.value=d||iso(Date.now()); fillAdd(di.value);
+  flash('addMsg', STANDALONE?'Leave a % box blank to calculate it; type a value (e.g. -1.21) to use that exact figure.':db?'Leave a % box blank to calculate it; type a value (e.g. -1.21) to use that exact figure.':'Saved for this visit only — open the dashboard on claude.ai to keep entries.');
+  fAdd.scrollIntoView({block:'nearest'}); document.getElementById('addPrice').focus();
+}
+document.getElementById('addDate').addEventListener('change',e=>fillAdd(e.target.value));
+document.getElementById('bAdd').addEventListener('click',()=>{ if(!fAdd.hidden){ fAdd.hidden=true; return; } openAdd(); });
+document.getElementById('bPaste').addEventListener('click',()=>{ fAdd.hidden=true; fData.hidden=true; fPaste.hidden=!fPaste.hidden; if(!fPaste.hidden) pasteBox.focus(); });
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>{ fAdd.hidden=true; fPaste.hidden=true; fData.hidden=true; }));
+function parseDate(s){ s=String(s).trim(); let m;
+  if((m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))) return mk(+m[1],+m[2],+m[3]);
+  if((m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})$/))) return mk(m[3].length===2?2000+ +m[3]:+m[3],+m[2],+m[1]);
+  const t=Date.parse(s+' UTC'); if(!isNaN(t)&&/[a-z]/i.test(s)&&/\d/.test(s)) return iso(t); return null;
+  function mk(y,mo,d){ if(mo<1||mo>12||d<1||d>31) return null; return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`; } }
+function splitLine(line){
+  if (line.includes('\t')) return line.split('\t').map(c=>c.trim());
+  if (line.includes(';')) return line.split(';').map(c=>c.trim());
+  if (/^[^\s]+,[^\s]/.test(line.trim()) && !/\s/.test(line.trim())) return line.trim().split(',');
+  const out=[]; for (const tok of line.trim().split(/\s+/)){ if(out.length && /^[¥$€£]$/.test(out[out.length-1])) out[out.length-1]+=tok; else out.push(tok); } return out;
+}
+// Reads: [S.No] Date Price [Day Week Month Year] — the layout of your sheet. Blank or #VALUE! % cells stay "calculate".
+function parsePaste(txt){ const rows=[]; let pctSeen=false;
+  for (const line of txt.split(/\r?\n/)){ if(!line.trim()) continue; const cells=splitLine(line);
+    let di=-1; for(let i=0;i<cells.length;i++) if(parseDate(cells[i])){ di=i; break; } if(di<0) continue;
+    let pi=-1,p=null; for(let i=di+1;i<cells.length;i++){ if(!cells[i]||/%/.test(cells[i])) continue; const v=parseNum(cells[i]); if(v!=null){ p=v; pi=i; break; } } if(p==null) continue;
+    const ov={}; PCT.forEach((m,k)=>{ const c=cells[pi+1+k]; if(c&&/%/.test(c)){ const v=parsePctIn(c); if(isFinite(v)){ ov[m]=v; pctSeen=true; } } });
+    rows.push({d:parseDate(cells[di]),p,ov}); }
+  return {rows,pctSeen}; }
+const pasteBox=document.getElementById('pasteBox'), pastePctWrap=document.getElementById('pastePctWrap'), pastePct=document.getElementById('pastePct');
+pasteBox.addEventListener('input',()=>{ const {rows,pctSeen}=parsePaste(pasteBox.value); document.getElementById('pasteGo').disabled=!rows.length; pastePctWrap.hidden=!pctSeen;
+  const has=pasteBox.value.trim();
+  flash('pasteMsg', has? (rows.length? `${rows.length} rows read for ${C[state.key].name}: ${rows[0].d} → ${rows[rows.length-1].d}${pctSeen?`, with ${rows.filter(r=>Object.keys(r.ov).length).length} rows carrying % values`:''}.` : 'No Date + Price pairs found yet.') : 'Dates as dd-mm-yy, dd/mm/yyyy or yyyy-mm-dd.', has && !rows.length); });
+fAdd.addEventListener('submit',async e=>{ e.preventDefault(); const d=document.getElementById('addDate').value, p=parseNum(document.getElementById('addPrice').value);
+  if(!d||p==null) return flash('addMsg','Enter a date and a positive price.',true);
+  const ov={}; for(const m of PCT){ const v=parsePctIn(document.getElementById('add_'+m).value); if(Number.isNaN(v)) return flash('addMsg',`${PCT_LABEL[m]} % isn't a number — use e.g. -1.21 or 2.5%.`,true); if(v!=null) ov[m]=v; }
+  try{ await saveRows(state.key,[{d,p,ov}]); const n=Object.keys(ov).length; flash('addMsg',`Saved ${C[state.key].cur}${fmtP(state.key,p)} for ${fmtDate(ms(d))}${n?` with ${n} manual % value${n>1?'s':''}`:''}.`); }
+  catch(err){ flash('addMsg','Not saved: '+(err.message||err.code||'storage unavailable'),true); } });
+fPaste.addEventListener('submit',async e=>{ e.preventDefault(); let {rows}=parsePaste(pasteBox.value); if(!rows.length) return;
+  if(!pastePct.checked || pastePctWrap.hidden) rows=rows.map(r=>({d:r.d,p:r.p,ov:{}}));
+  const btn=document.getElementById('pasteGo'); btn.disabled=true; flash('pasteMsg',`Importing ${rows.length} rows…`);
+  try{ const n=await saveRows(state.key,rows); flash('pasteMsg',`Imported ${n} rows into ${C[state.key].name}.`); pasteBox.value=''; pastePctWrap.hidden=true; }
+  catch(err){ flash('pasteMsg','Import stopped: '+(err.message||err.code||'storage unavailable'),true); btn.disabled=false; } });
+
+/* ---------- manage data ---------- */
+const fData=document.getElementById('fData');
+let pendingConfirm=null;
+const manualIds = keys => keys.flatMap(k=>Object.keys(manual[k]||{}).map(d=>`${k}|${d}`));
+function renderDataPanel(){
+  if (fData.hidden) return;
+  const key=state.key, nm=C[key].name, sh=C[key].short||nm, n=manualIds([key]).length, all=manualIds(ORDER).length, seedOn=!hideSeed[key], hasSeed=!!SEED[key];
+  const hidden=BUILTIN.filter(k=>hiddenSections[k]);
+  document.getElementById('dataBody').innerHTML = `
+    ${hasSeed?`<div class="drow"><div><b>Built-in ${esc(nm)} prices</b><span>${seedOn?`${SEED[key].length} rows included with the dashboard are showing.`:'Hidden. Only your own entries are used.'}</span></div><button class="btn" type="button" data-act="seed">${seedOn?'Use only my data':'Show built-in data again'}</button></div>`:''}
+    <div class="drow"><div><b>Your ${esc(nm)} entries</b><span>${n} saved.</span></div><button class="btn danger" type="button" data-act="delKey" ${n?'':'disabled'}>Delete my ${esc(sh)} entries</button></div>
+    <div class="drow"><div><b>Remove the ${esc(sh)} section</b><span>${C[key].custom?'Deletes the section and all its rows.':'Hides this built-in section and deletes your entries in it.'}</span></div><button class="btn danger" type="button" data-act="rmSec" ${ORDER.length>1?'':'disabled'}>Remove section</button></div>
+    ${hidden.length?`<div class="drow"><div><b>Hidden built-in sections</b><span>${hidden.map(k=>esc(C[k].short||C[k].name)).join(', ')}</span></div><button class="btn" type="button" data-act="restore">Show them again</button></div>`:''}
+    <div class="drow"><div><b>Start fresh</b><span>Remove imported sections, hide built-in data and delete all ${all} of your entries.</span></div><button class="btn danger" type="button" data-act="fresh">Clear everything</button></div>
+    ${pendingConfirm?`<div class="confirm" role="alert"><span>${esc(pendingConfirm.text)}</span><div class="actions"><button class="btn" type="button" data-act="no">Keep my data</button><button class="btn danger solid" type="button" data-act="yes">${esc(pendingConfirm.yes)}</button></div></div>`:''}`;
+}
+async function saveSettings(){ store.set('ct-hide',JSON.stringify(hideSeed)); store.set('ct-hidesec',JSON.stringify(hiddenSections)); if(db) await db.doc('settings/view').set({hideSeed,hiddenSections}); }
+document.getElementById('bData').addEventListener('click',()=>{ fAdd.hidden=true; fPaste.hidden=true; fData.hidden=!fData.hidden; pendingConfirm=null; flash('dataMsg',''); renderDataPanel(); });
+fData.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-act]'); if(!b) return; const act=b.dataset.act, key=state.key, nm=C[key].name;
+  try{
+    if(act==='seed'){ hideSeed[key]=!hideSeed[key]; pendingConfirm=null; await saveSettings(); flash('dataMsg', hideSeed[key]?`Built-in ${nm} data hidden. Add or paste your own prices.`:`Built-in ${nm} data is showing again.`); render(); return; }
+    if(act==='restore'){ hiddenSections={}; await saveSettings(); rebuildOrder(); flash('dataMsg','Built-in sections are back.'); render(); return; }
+    if(act==='delKey'){ const n=manualIds([key]).length; pendingConfirm={text:`Delete all ${n} of your ${nm} entries? This can't be undone.`, yes:'Delete entries', run:async()=>`Deleted ${await deleteManual([key])} ${nm} entries.`}; }
+    if(act==='rmSec'){ pendingConfirm={text: C[key].custom?`Remove the ${nm} section and delete its ${manualIds([key]).length} rows? This can't be undone.`:`Remove the ${nm} section? Your ${manualIds([key]).length} entries in it are deleted; you can show the built-in section again later.`, yes:'Remove section', run:async()=>{ await removeSection(key); return `${nm} removed.`; }}; }
+    if(act==='fresh'){ const n=manualIds(ORDER).length; pendingConfirm={text:`Clear everything? Imported sections are removed, built-in data is hidden (you can show it again) and all ${n} of your entries are deleted for good.`, yes:'Clear everything', run:async()=>{
+      BUILTIN.forEach(k=>hideSeed[k]=true); await saveSettings(); const cnt=await deleteManual([...BUILTIN,...Object.keys(custom)]);
+      for (const k of Object.keys(custom)){ delete custom[k]; if(db) await db.collection('sections').doc(k).delete(); } rebuildOrder();
+      return `Cleared ${cnt} entries — the dashboard is empty and ready for your data.`; }}; }
+    if(act==='no'){ pendingConfirm=null; flash('dataMsg','Nothing was deleted.'); }
+    if(act==='yes' && pendingConfirm){ const run=pendingConfirm.run; pendingConfirm=null; b.disabled=true; flash('dataMsg','Working…'); const msg=await run(); rebuildOrder(); render(); flash('dataMsg', msg); return; }
+    renderDataPanel();
+  }catch(err){ pendingConfirm=null; flash('dataMsg','Stopped: '+(err.message||err.code||'storage unavailable')+'. Anything already deleted stays deleted.',true); render(); }
+});
+
+/* ---------- Excel import: every sheet becomes a section ---------- */
+let xlsxP=null;
+function loadXLSX(){ if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(!xlsxP) xlsxP=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=()=>res(window.XLSX); s.onerror=()=>{ xlsxP=null; rej(new Error('The Excel reader could not load. Check your connection and try again.')); }; document.head.appendChild(s); });
+  return xlsxP; }
+const CUR_SYM={USD:'$',CNY:'¥',RMB:'¥',JPY:'¥',EUR:'€',GBP:'£',INR:'₹',AUD:'A$',CAD:'C$',CHF:'CHF '};
+function cellDate(XLSX,raw,fmt){
+  if (typeof raw==='number' && raw>20000 && raw<80000){ const o=XLSX.SSF.parse_date_code(raw); if(o) return `${o.y}-${String(o.m).padStart(2,'0')}-${String(o.d).padStart(2,'0')}`; }
+  return parseDate(String(fmt||raw||''));
+}
+function cellPct(raw,fmt){
+  const s=String(fmt==null?'':fmt).trim(); if(!s || /#|n\/a|^-+$/i.test(s)) return null;
+  if (typeof raw==='number') return /%/.test(s) ? raw : raw/100;   // Excel % cells hold fractions; plain numbers like 46.86 are percent points
+  const v=parsePctIn(s); return Number.isFinite(v) ? v : null;
+}
+function parseSheet(XLSX,ws,sheet,file){
+  const raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null,blankrows:true});
+  const fmt=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:'',blankrows:true});
+  const txt=(i,j)=>String(((fmt[i]||[])[j])??'').trim();
+  let h=-1; for(let i=0;i<Math.min(fmt.length,30);i++) if((fmt[i]||[]).some(c=>/^\s*(date|dates|trade date|as of)\s*$/i.test(String(c)))){ h=i; break; }
+  const col={};
+  const width=Math.max(0,...fmt.slice(0,60).map(r=>(r||[]).length));
+  const head=j=> h<0 ? '' : (txt(h-1,j)+' '+txt(h,j)).trim();
+  const dateLike=j=>{ let n=0; for(let i=h+1;i<Math.min(fmt.length,h+40);i++) if(cellDate(XLSX,(raw[i]||[])[j],txt(i,j))) n++; return n; };
+  const numLike=j=>{ let n=0; for(let i=h+1;i<Math.min(fmt.length,h+40);i++){ const r=(raw[i]||[])[j], f=txt(i,j); if(/%/.test(f)) continue; if((typeof r==='number'&&!cellDate(XLSX,r,f))||parseNum(f)!=null&&!parseDate(f)) n++; } return n; };
+  if (h>=0) col.date=(fmt[h]||[]).findIndex(c=>/^\s*(date|dates|trade date|as of)\s*$/i.test(String(c)));
+  else { let best=0; for(let j=0;j<width;j++){ const n=dateLike(j); if(n>best){ best=n; col.date=j; } } if(best<2) return {sheet,file,rows:[],why:'no date column found'}; }
+  for(let j=0;j<width;j++){ if(j===col.date) continue; const s=head(j).toLowerCase();
+    if(col.price==null && /price|close|last|settle|value|\(.*\/.*\)|usd|cny|eur|inr/.test(s) && !/%|chg|change/.test(s)) col.price=j;
+    else if(/\bday\b|daily|\b1d\b/.test(s)&&col.day==null) col.day=j; else if(/week|\b1w\b|\bwk/.test(s)&&col.week==null) col.week=j;
+    else if(/month|\b1m\b|\bmth/.test(s)&&col.month==null) col.month=j; else if(/\byear|\b1y\b|yoy|\byr\b/.test(s)&&!/ytd/.test(s)&&col.year==null) col.year=j; }
+  if (col.price==null){ let best=0; for(let j=col.date+1;j<width;j++){ const n=numLike(j); if(n>best){ best=n; col.price=j; } if(best>=3) break; } }
+  if (col.price==null) return {sheet,file,rows:[],why:'no price column found'};
+  const out=new Map(); let pct=false, sym='';
+  for(let i=Math.max(h+1,0);i<raw.length;i++){ const rr=raw[i]||[];
+    const d=cellDate(XLSX,rr[col.date],txt(i,col.date)); if(!d) continue;
+    const pf=txt(i,col.price), p= typeof rr[col.price]==='number' ? rr[col.price] : parseNum(pf); if(p==null||!(p>0)) continue;
+    if(!sym){ const m=pf.match(/[¥$€£₹]/); if(m) sym=m[0]; }
+    const ov={}; for(const m of PCT){ if(col[m]==null) continue; const v=cellPct(rr[col[m]],txt(i,col[m])); if(v!=null){ ov[m]=v; pct=true; } }
+    out.set(d,{d,p,ov}); }
+  const rows=[...out.values()].sort((a,b)=>a.d<b.d?-1:1);
+  let title=''; for(let i=0;i<Math.max(h,0)&&!title;i++) for(const c of (fmt[i]||[])){ const s=String(c).trim(); if(s.length>3&&!/^price$/i.test(s)){ title=s; break; } }
+  let name=(title||sheet).split('|')[0].split(/[;,]?\s*source\s*:/i)[0].replace(/\bprices?\b/ig,'').replace(/\s{2,}/g,' ').replace(/[\s,;:|-]+$/,'').trim() || sheet;
+  const ph=h>=0?head(col.price):''; const um=ph.match(/\(\s*([^)]+?)\s*\)/); const unit=um?um[1].replace(/\s*\/\s*/,' / '):'';
+  const code=(unit.match(/^[A-Za-z]{3}/)||[''])[0].toUpperCase(); const cur=sym||CUR_SYM[code]||'';
+  const med=rows.length?rows.map(r=>r.p).sort((a,b)=>a-b)[rows.length>>1]:0; const dp= med>=1000?0: med>=20?2:4;
+  return {sheet,file,title,name,unit,cur,dp,rows,pct,why: rows.length?'':'no dated price rows found'};
+}
+const MATCH={copper:/copper/i,lithium:/lithium/i,wti:/\bwti\b|crude oil(?!.*brent)/i,brent:/brent/i};
+function guessTarget(name){
+  const n=name.toLowerCase().trim();
+  for(const k of ORDER) if(C[k].custom && C[k].name.toLowerCase().trim()===n) return k;
+  for(const k of BUILTIN) if(ORDER.includes(k) && MATCH[k].test(name)) return k;
+  return 'new';
+}
+let impItems=[];
+const imp=document.getElementById('imp'), fileIn=document.getElementById('fileIn');
+function openPicker(){ fileIn.value=''; fileIn.click(); }
+async function readFiles(files){
+  imp.hidden=false; flash('impMsg','Reading…'); imp.scrollIntoView({block:'nearest'});
+  try{ const XLSX=await loadXLSX();
+    for (const f of files){ const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:false});
+      for (const sn of wb.SheetNames){ const it=parseSheet(XLSX,wb.Sheets[sn],sn,f.name); it.id=Math.random().toString(36).slice(2); it.on=it.rows.length>0; it.target=it.rows.length?guessTarget(it.name||sn):'new'; impItems.push(it); } }
+    flash('impMsg', impItems.some(i=>i.on) ? 'Check each sheet, then import.' : 'No sheets with a Date and Price column were found.', !impItems.some(i=>i.on));
+  }catch(err){ flash('impMsg',(err.message||'That file could not be read')+'.',true); }
+  renderImp();
+}
+function renderImp(){
+  const opts=it=>`<option value="new"${it.target==='new'?' selected':''}>New section</option>`+ORDER.map(k=>`<option value="${k}"${it.target===k?' selected':''}>${esc(C[k].short||C[k].name)}</option>`).join('');
+  document.getElementById('impBody').innerHTML = impItems.length ? `<div class="imp-tbl"><table class="sheet"><thead><tr><th></th><th>Sheet</th><th>Section name</th><th>Import into</th><th>Unit</th><th>Rows</th></tr></thead><tbody>${
+    impItems.map(it=>{ const dis=!it.rows.length, isNew=it.target==='new';
+      return `<tr data-id="${it.id}" class="${dis?'off':''}"><td><input type="checkbox" data-f="on" aria-label="Import ${esc(it.sheet)}" ${it.on?'checked':''} ${dis?'disabled':''}></td>
+        <td class="sh"><b>${esc(it.sheet)}</b><span>${esc(it.file)}</span></td>
+        <td><input type="text" data-f="name" value="${esc(isNew?it.name||it.sheet:C[it.target].name)}" ${isNew&&!dis?'':'disabled'} aria-label="Section name"></td>
+        <td><select data-f="target" ${dis?'disabled':''} aria-label="Import into">${opts(it)}</select></td>
+        <td><input type="text" data-f="unit" class="u" value="${esc((isNew?it.unit:C[it.target].unit)||'')}" ${isNew&&!dis?'':'disabled'} placeholder="e.g. USD / lb" aria-label="Unit"></td>
+        <td class="rc">${dis?`<span class="why">Skipped: ${esc(it.why)}</span>`:`${it.rows.length} <span>${esc(it.rows[0].d)} → ${esc(it.rows[it.rows.length-1].d)}${it.pct?' · with %':''}</span>`}</td></tr>`; }).join('')}</tbody></table></div>` : '';
+  const n=impItems.filter(i=>i.on&&i.rows.length).length; const go=document.getElementById('impGo'); go.disabled=!n; go.textContent=n?`Import ${n} sheet${n>1?'s':''}`:'Import';
+  document.getElementById('impPctWrap').hidden=!impItems.some(i=>i.pct);
+}
+document.getElementById('impBody').addEventListener('input',e=>{ const tr=e.target.closest('tr[data-id]'); if(!tr) return; const it=impItems.find(i=>i.id===tr.dataset.id), f=e.target.dataset.f;
+  if(f==='on'){ it.on=e.target.checked; renderImp(); } else if(f==='target'){ it.target=e.target.value; renderImp(); } else if(f==='name') it.name=e.target.value; else if(f==='unit') it.unit=e.target.value; });
+document.getElementById('impGo').addEventListener('click',async e=>{
+  const go=e.currentTarget, keep=document.getElementById('impPct').checked, todo=impItems.filter(i=>i.on&&i.rows.length); if(!todo.length) return;
+  go.disabled=true; let first=null, total=0;
+  try{
+    for (const [n,it] of todo.entries()){ flash('impMsg',`Importing ${n+1} of ${todo.length}: ${it.sheet}…`);
+      const key = it.target==='new' ? await createSection({name:(it.name||it.sheet).trim(),unit:it.unit,cur:it.cur,dp:it.dp,from:`${it.file} › ${it.sheet}`}) : it.target;
+      await saveRows(key, keep ? it.rows : it.rows.map(r=>({d:r.d,p:r.p,ov:{}}))); total+=it.rows.length; first=first||key; it.on=false; it.done=true; }
+    impItems=impItems.filter(i=>!i.done&&i.rows.length); state.key=first; state.view=null; store.set('ct-key',first); rebuildOrder(); render();
+    if(!impItems.length) imp.hidden=true;
+    toast(`Imported ${total} rows from ${todo.length} sheet${todo.length>1?'s':''}.`);
+  }catch(err){ flash('impMsg','Import stopped: '+(err.message||err.code||'storage unavailable')+'. Sheets already imported are kept.',true); rebuildOrder(); render(); renderImp(); }
+});
+document.getElementById('impMore').addEventListener('click',openPicker);
+document.getElementById('impClose').addEventListener('click',()=>{ impItems=[]; imp.hidden=true; });
+document.getElementById('bImport').addEventListener('click',openPicker);
+fileIn.addEventListener('change',()=>{ if(fileIn.files.length) readFiles([...fileIn.files]); });
+document.addEventListener('dragover',e=>{ if([...(e.dataTransfer?.types||[])].includes('Files')){ e.preventDefault(); document.body.classList.add('dropping'); } });
+document.addEventListener('dragleave',e=>{ if(!e.relatedTarget) document.body.classList.remove('dropping'); });
+document.addEventListener('drop',e=>{ if(!e.dataTransfer?.files?.length) return; e.preventDefault(); document.body.classList.remove('dropping');
+  const fs=[...e.dataTransfer.files].filter(f=>/\.(xlsx|xlsm|xls|csv)$/i.test(f.name)); if(fs.length) readFiles(fs); else toast('Drop an .xlsx, .xls or .csv file.'); });
+let toastT; function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toastT); toastT=setTimeout(()=>t.hidden=true,3500); }
+
+/* ---------- method panel ---------- */
+function renderMethod(){
+  document.querySelectorAll('#mMethod button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.m===calc.method)));
+  document.getElementById('mFy').value=String(calc.fy);
+  const fy = calc.fy===1 ? 'YTD = vs the last close of the previous calendar year.' : `FYTD = vs the last close before 1 ${MONTHS[calc.fy-1]} (start of the financial year).`;
+  document.getElementById('mPop').innerHTML = calc.method==='calendar'
+    ? `<b>% change = (Price today − Reference close) ÷ Reference close × 100.</b> Day: the previous trading session. Week: 7 calendar days earlier. Month: the same date one month earlier. Year: the same date one year earlier. If the reference date was a weekend or holiday, the last close before it is used (up to 4 / 7 / 12 days back for week / month / year); otherwise the cell shows —. ${fy}`
+    : `<b>% change = (Price today − Reference close) ÷ Reference close × 100.</b> Day, Week, Month and Year use the close 1, 5, 21 and 252 <em>trading sessions</em> back, so holidays and weekends are skipped rather than counted. ${fy}`;
+}
+document.getElementById('mMethod').addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return; calc.method=b.dataset.m; store.set('ct-method',calc.method); render(); });
+document.getElementById('mFy').addEventListener('change',e=>{ calc.fy=+e.target.value; store.set('ct-fy',calc.fy); render(); });
+document.getElementById('mInfo').addEventListener('click',e=>{ const p=document.getElementById('mPop'); p.hidden=!p.hidden; e.currentTarget.setAttribute('aria-expanded',String(!p.hidden)); });
+document.getElementById('mFy').innerHTML=MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
+
+/* ---------- boot ---------- */
+function render(){ saveLocal(); renderMethod(); renderTiles(); renderRanges(); renderHead(); renderChart(); renderTable(); leave(); }
+let rt; new ResizeObserver(()=>{ clearTimeout(rt); rt=setTimeout(renderChart,60); }).observe(document.getElementById('cwrap'));
+document.getElementById('zFull').innerHTML=ICON.expand;
+const booted={};
+if (STANDALONE){
+  let loc=null; try{ loc=JSON.parse(localStorage.getItem(LOCAL_KEY)||'null'); }catch(e){}
+  applyState(loc && loc.version===(BAKED.version||0) ? loc : BAKED);
+  document.getElementById('bSaveFile').hidden=false; document.getElementById('bCsv').hidden=false;
+  document.getElementById('bSaveFile').addEventListener('click',saveDashboardFile);
+}
+rebuildOrder();
+render();
+
+if (window.claude && window.claude.use){
+  window.claude.use('downloads').then(d=>{ if(d){ downloads=d; document.getElementById('bCsv').hidden=false; } }).catch(()=>{});
+  window.claude.use('db').then(d=>{ if(!d) return; db=d;
+    db.doc('settings/view').onSnapshot(s=>{ const v=s.data(); if(!v) return;
+      if(v.hideSeed&&typeof v.hideSeed==='object') hideSeed=Object.fromEntries(BUILTIN.map(k=>[k,!!v.hideSeed[k]]));
+      if(v.hiddenSections&&typeof v.hiddenSections==='object') hiddenSections=Object.fromEntries(BUILTIN.filter(k=>v.hiddenSections[k]).map(k=>[k,true]));
+      store.set('ct-hide',JSON.stringify(hideSeed)); store.set('ct-hidesec',JSON.stringify(hiddenSections)); rebuildOrder(); render(); }, ()=>{});
+    db.collection('sections').onSnapshot(snap=>{ const m={}; for(const doc of snap.docs){ const v=doc.data(); if(v&&typeof v.name==='string') m[doc.id]=v; } custom=m;
+      const want=(location.hash||'').slice(1); rebuildOrder(); if(m[want]&&!booted.hash){ booted.hash=true; state.key=want; } render(); }, ()=>{});
+    db.collection('data').onSnapshot(snap=>{ const m={}; for(const doc of snap.docs){ const v=doc.data(); if(v&&v.key&&v.rows&&typeof v.rows==='object') m[doc.id]={key:v.key,year:String(v.year),rows:v.rows}; } chunkDocs=m; rebuildManual(); render(); }, ()=>{});
+    db.collection('entries').onSnapshot(snap=>{ const m={}; for(const doc of snap.docs){ const v=doc.data(); if(!v||!v.key||!v.date||!(v.price>0)) continue; const ov={}; for(const k of PCT) if(typeof v[k]==='number'&&isFinite(v[k])) ov[k]=v[k]; (m[v.key]=m[v.key]||{})[v.date]={price:+v.price,ov,lid:doc.id}; } legacy=m; rebuildManual(); render(); }, ()=>{});
+  }).catch(()=>{});
+}
+})();
+</script>
+
+</body>
+</html>
