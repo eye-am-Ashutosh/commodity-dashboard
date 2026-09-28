@@ -179,6 +179,16 @@ body.dropping .wrap{outline:2px dashed var(--accent);outline-offset:6px;border-r
 .imp-tbl .why{font-family:var(--display);font-size:12px;color:var(--muted)}
 .imp-foot{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;justify-content:space-between;padding:12px 18px;border-top:1px solid var(--line)}
 .imp-foot .msg{flex:1 1 200px}
+.sync{font-size:12px;font-weight:600;color:var(--muted);padding:3px 10px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);white-space:nowrap}
+.sync.ok{color:var(--up);background:var(--up-bg);border-color:transparent}
+.sync.warn{color:#9A5B00;background:#FFF1D6;border-color:transparent}
+:root[data-theme="dark"] .sync.warn{color:#F2C46B;background:#3A2C10}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .sync.warn{color:#F2C46B;background:#3A2C10}}
+.ghp .drawer{border-top:1px solid var(--line)}
+.ghp .steps{margin:0;padding-left:20px;display:grid;gap:4px;font-size:13px;color:var(--ink2);max-width:90ch}
+.ghp .steps a{color:var(--accent);font-weight:600}
+.ghp label.narrow{flex:0 1 120px}
+.ghc{margin:12px 18px 0}
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;z-index:60;box-shadow:0 6px 24px rgba(0,0,0,.2);max-width:calc(100% - 32px)}
 .method{display:grid;gap:8px;padding:10px 18px;border-top:1px solid var(--line);background:var(--surface2)}
 .method .ctl{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center}
@@ -211,11 +221,34 @@ body.dropping .wrap{outline:2px dashed var(--accent);outline-offset:6px;border-r
 <div class="wrap">
   <header class="top">
     <h1>Commodity Tracker</h1>
-    <div class="hright"><span class="asof" id="asof"></span><button class="btn" id="bSaveFile" type="button" hidden title="Download a copy of this dashboard with all your data inside, ready to share">Save dashboard file</button><button class="btn primary" id="bImport" type="button">Import Excel</button></div>
+    <div class="hright"><span class="asof" id="asof"></span><span class="sync" id="sync" hidden role="status"></span><button class="btn" id="bGh" type="button" hidden>Save to GitHub</button><button class="btn primary" id="bImport" type="button">Import Excel</button></div>
   </header>
 
   <div class="tiles" id="tiles" role="group" aria-label="Sections"></div>
   <input type="file" id="fileIn" accept=".xlsx,.xlsm,.xls,.csv" multiple hidden>
+
+  <section class="panel ghp" id="gh" hidden aria-labelledby="ghT">
+    <div class="tbl-head"><h3 id="ghT">Save to GitHub</h3><button class="btn" id="ghClose" type="button">Close</button></div>
+    <div class="confirm ghc" id="ghConflict" hidden><span></span><div class="actions"><button class="btn" id="ghLoad" type="button">Load GitHub version</button><button class="btn danger solid" id="ghOverwrite" type="button">Replace with mine</button></div></div>
+    <form class="drawer" id="ghForm">
+      <ol class="steps" id="ghSteps">
+        <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">GitHub → Settings → Fine-grained tokens → Generate new token</a>.</li>
+        <li>Give it a name, pick an expiration, and under <b>Repository access</b> choose <b>Only select repositories</b> → <b id="ghRepoName">your repository</b>.</li>
+        <li>Under <b>Permissions</b>, add <b>Contents</b> and set it to <b>Read and write</b>.</li>
+        <li>Click <b>Generate token</b>, copy it, and paste it below. It stays in this browser and is only sent to GitHub.</li>
+      </ol>
+      <div class="row">
+        <label>Access token<input id="ghToken" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+        <label>Repository<input id="ghRepo" type="text" spellcheck="false" placeholder="owner/repository"></label>
+        <label class="narrow">Branch<input id="ghBranch" type="text" spellcheck="false" value="main"></label>
+      </div>
+      <label class="check"><input id="ghRemember" type="checkbox" checked> Remember on this device</label>
+      <div class="row" style="justify-content:space-between">
+        <p class="msg" id="ghMsg" aria-live="polite"></p>
+        <div class="actions"><button class="btn" id="ghForget" type="button" hidden>Disconnect</button><button class="btn" id="ghCopy" type="button">Download a copy</button><button class="btn primary" id="ghSave" type="submit">Connect and save</button></div>
+      </div>
+    </form>
+  </section>
 
   <section class="panel imp" id="imp" hidden aria-labelledby="impT">
     <div class="tbl-head"><h3 id="impT">Import from Excel</h3><div class="actions"><button class="btn" id="impMore" type="button">Add another file</button><button class="btn" id="impClose" type="button">Close</button></div></div>
@@ -732,7 +765,7 @@ function applyState(s){
   for(const [k,byDate] of Object.entries(s.rows||{})) for(const [d,a] of Object.entries(byDate||{})){ if(!Array.isArray(a)||!(a[0]>0)) continue;
     const ov={}; PCT.forEach((m,i)=>{ if(typeof a[i+1]==='number'&&isFinite(a[i+1])) ov[m]=a[i+1]; }); (manual[k]=manual[k]||{})[d]={price:a[0],ov,id:`${k}|${d}`}; }
 }
-function saveLocal(){ if(!STANDALONE) return; try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(snapshotState())); }catch(e){} }
+function saveLocal(){ if(!STANDALONE) return; try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(Object.assign(snapshotState(),{base:sync.savedAt,synced:sync.hash}))); }catch(e){} }
 function blobSave(name,data,type){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000); }
 function saveDashboardFile(){
   const s=snapshotState(); s.version=Date.now(); BAKED.version=s.version;
@@ -973,16 +1006,124 @@ document.getElementById('mFy').addEventListener('change',e=>{ calc.fy=+e.target.
 document.getElementById('mInfo').addEventListener('click',e=>{ const p=document.getElementById('mPop'); p.hidden=!p.hidden; e.currentTarget.setAttribute('aria-expanded',String(!p.hidden)); });
 document.getElementById('mFy').innerHTML=MONTHS.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('');
 
+/* ---------- GitHub: the shared copy of the data lives in data.json in the site's repository ---------- */
+const GH_KEY='ct-gh';
+const gh=(()=>{ let c={}; try{ c=JSON.parse(localStorage.getItem(GH_KEY)||sessionStorage.getItem(GH_KEY)||'{}')||{}; }catch(e){}
+  if(!c.repo){ const m=location.hostname.match(/^([^.]+)\.github\.io$/i), seg=location.pathname.split('/').filter(Boolean)[0];
+    if(m) c.repo = seg && !/\.html?$/i.test(seg) ? `${m[1]}/${seg}` : `${m[1]}/${m[1]}.github.io`; }
+  c.branch=c.branch||'main'; return c; })();
+const sync={savedAt:null, hash:null, conflict:null, busy:false, offline:false};
+const stateJSON=()=>{ const s=snapshotState(); delete s.version; return JSON.stringify(s); };
+function hashStr(s){ let h=5381; for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return String(h>>>0); }
+const isDirty=()=>hashStr(stateJSON())!==sync.hash;
+function b64encode(str){ const b=new TextEncoder().encode(str); let bin=''; for(let i=0;i<b.length;i+=0x8000) bin+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(bin); }
+function b64decode(s){ const bin=atob(s.replace(/\s/g,'')); return new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0))); }
+const ghHeaders=()=>Object.assign({'Accept':'application/vnd.github+json'}, gh.token?{'Authorization':'Bearer '+gh.token}:{});
+const ghApi=()=>{ const [o,r]=gh.repo.split('/'); return `https://api.github.com/repos/${encodeURIComponent(o)}/${encodeURIComponent(r)}`; };
+function ghErr(status,j){
+  const m = status===401 ? 'GitHub rejected the token. It may be mistyped or expired. Paste a new one.'
+    : status===403||status===404 ? `The token can't write to ${gh.repo}. Give it Contents: Read and write access for this repository.`
+    : status===409||status===422 ? 'GitHub has a newer version of the data. Reload the page and try again.'
+    : `GitHub error ${status}${j&&j.message?': '+j.message:''}`;
+  const e=new Error(m); e.auth=[401,403,404].includes(status); return e;
+}
+async function fetchRemote(){
+  if(!gh.repo) return null;
+  const res=await fetch(`${ghApi()}/contents/data.json?ref=${encodeURIComponent(gh.branch)}&t=${Date.now()}`,{headers:ghHeaders(),cache:'no-store'});
+  if(res.status===404) return {missing:true};
+  if(!res.ok){ // e.g. the API's hourly limit for visitors: fall back to the copy GitHub Pages serves
+    const alt=await fetch('data.json?t='+Date.now(),{cache:'no-store'});
+    if(alt.ok) return {data:await alt.json()}; if(alt.status===404) return {missing:true}; throw ghErr(res.status); }
+  const j=await res.json();
+  const txt = j.content ? b64decode(j.content) : await (await fetch(j.download_url,{cache:'no-store'})).text();
+  return {data:JSON.parse(txt), sha:j.sha};
+}
+function applyRemote(d){ applyState(d); sync.savedAt=d.savedAt||null; sync.hash=hashStr(stateJSON()); sync.conflict=null; rebuildOrder(); render(); }
+async function saveToGitHub(force){
+  if(!gh.token||!gh.repo){ openGh(); return; }
+  if(sync.busy) return; sync.busy=true; renderSync();
+  try{
+    const cur=await fetch(`${ghApi()}/contents/data.json?ref=${encodeURIComponent(gh.branch)}&t=${Date.now()}`,{headers:ghHeaders(),cache:'no-store'});
+    let sha=null;
+    if(cur.ok){ const j=await cur.json(); sha=j.sha;
+      if(!force){ let theirs=null; try{ theirs=JSON.parse(j.content?b64decode(j.content):await (await fetch(j.download_url,{cache:'no-store'})).text()); }catch(e){}
+        if(theirs&&theirs.savedAt&&theirs.savedAt!==sync.savedAt){ sync.conflict=theirs; openGh(); return; } } }
+    else if(cur.status!==404) throw ghErr(cur.status, await cur.json().catch(()=>null));
+    const body=JSON.parse(stateJSON()); body.savedAt=new Date().toISOString();
+    const put=await fetch(`${ghApi()}/contents/data.json`,{method:'PUT',headers:Object.assign({'Content-Type':'application/json'},ghHeaders()),
+      body:JSON.stringify(Object.assign({message:`Update dashboard data (${body.savedAt.slice(0,16).replace('T',' ')} UTC)`,content:b64encode(JSON.stringify(body)),branch:gh.branch}, sha?{sha}:{}))});
+    if(!put.ok) throw ghErr(put.status, await put.json().catch(()=>null));
+    sync.savedAt=body.savedAt; sync.hash=hashStr(stateJSON()); sync.conflict=null; saveLocal();
+    document.getElementById('gh').hidden=true;
+    toast('Saved to GitHub. Everyone who opens the link now sees this data.');
+  }catch(e){ if(e.auth) openGh(e.message); else toast(e.message||'Could not reach GitHub. Check your connection and try again.'); }
+  finally{ sync.busy=false; renderSync(); }
+}
+const ago=iso=>{ const m=Math.round((Date.now()-Date.parse(iso))/6e4); return m<1?'just now':m<60?`${m} min ago`:m<1440?`${Math.round(m/60)} h ago`:fmtDate(Date.parse(iso),{day:'numeric',month:'short'}); };
+function renderSync(){
+  if(!STANDALONE) return;
+  const el=document.getElementById('sync'), b=document.getElementById('bGh'); el.hidden=false; b.hidden=false;
+  const dirty=isDirty(); let txt, cls='';
+  if(sync.busy){ txt='Saving to GitHub…'; }
+  else if(sync.conflict){ txt='Newer data on GitHub'; cls='warn'; }
+  else if(dirty){ txt='Unsaved changes'; cls='warn'; }
+  else if(sync.savedAt){ txt=`Saved to GitHub · ${ago(sync.savedAt)}`; cls='ok'; }
+  else if(sync.offline){ txt='Saved in this browser'; }
+  else txt='Not on GitHub yet';
+  el.textContent=txt; el.className='sync '+cls;
+  b.className = 'btn'+(dirty||sync.conflict?' primary':''); b.disabled=sync.busy;
+  document.getElementById('bImport').className = 'btn'+(dirty||sync.conflict?'':' primary');
+}
+function openGh(msg){
+  const p=document.getElementById('gh'); p.hidden=false;
+  document.getElementById('ghRepo').value=gh.repo||''; document.getElementById('ghBranch').value=gh.branch||'main';
+  const t=document.getElementById('ghToken'); t.value=''; t.placeholder = gh.token ? 'Saved on this device (paste a new one to replace it)' : 'github_pat_…';
+  document.getElementById('ghRepoName').textContent=(gh.repo||'your repository').split('/').pop();
+  document.getElementById('ghSteps').hidden=!!gh.token; document.getElementById('ghForget').hidden=!gh.token;
+  document.getElementById('ghSave').textContent = gh.token ? 'Save to GitHub' : 'Connect and save';
+  const c=document.getElementById('ghConflict');
+  if(sync.conflict){ c.hidden=false; c.querySelector('span').textContent=`Someone saved newer data to GitHub (${fmtDate(Date.parse(sync.conflict.savedAt),{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}). Load it, or replace it with the data in this browser.`; }
+  else c.hidden=true;
+  flash('ghMsg', msg||'', !!msg); p.scrollIntoView({block:'nearest'});
+}
+document.getElementById('bGh').addEventListener('click',()=>saveToGitHub(false));
+document.getElementById('ghClose').addEventListener('click',()=>{ document.getElementById('gh').hidden=true; });
+document.getElementById('ghCopy').addEventListener('click',saveDashboardFile);
+document.getElementById('ghLoad').addEventListener('click',()=>{ const d=sync.conflict; if(d){ applyRemote(d); document.getElementById('gh').hidden=true; toast('Loaded the latest data from GitHub.'); } });
+document.getElementById('ghOverwrite').addEventListener('click',()=>{ sync.conflict=null; document.getElementById('ghConflict').hidden=true; saveToGitHub(true); });
+document.getElementById('ghForget').addEventListener('click',()=>{ gh.token=null; try{ localStorage.setItem(GH_KEY,JSON.stringify({repo:gh.repo,branch:gh.branch})); sessionStorage.removeItem(GH_KEY); }catch(e){} openGh(); flash('ghMsg','Disconnected. The token was removed from this browser.'); });
+document.getElementById('ghForm').addEventListener('submit',async e=>{ e.preventDefault();
+  const tok=document.getElementById('ghToken').value.trim()||gh.token, repo=document.getElementById('ghRepo').value.trim().replace(/^https?:\/\/github\.com\//i,'').replace(/\/+$/,''), branch=document.getElementById('ghBranch').value.trim()||'main';
+  if(!tok) return flash('ghMsg','Paste your access token first.',true);
+  if(!/^[\w.-]+\/[\w.-]+$/.test(repo)) return flash('ghMsg','Repository should look like owner/name, e.g. eye-am-ashutosh/commodity-dashboard.',true);
+  flash('ghMsg','Checking the token…');
+  const prev={token:gh.token,repo:gh.repo,branch:gh.branch}; Object.assign(gh,{token:tok,repo,branch});
+  try{ const r=await fetch(ghApi(),{headers:ghHeaders(),cache:'no-store'}); if(!r.ok) throw ghErr(r.status);
+    const j=await r.json(); if(j.permissions&&!j.permissions.push) throw ghErr(403);
+    const remember=document.getElementById('ghRemember').checked, val=JSON.stringify({token:tok,repo,branch});
+    try{ if(remember){ localStorage.setItem(GH_KEY,val); sessionStorage.removeItem(GH_KEY); } else { sessionStorage.setItem(GH_KEY,val); localStorage.setItem(GH_KEY,JSON.stringify({repo,branch})); } }catch(_){}
+    flash('ghMsg','Connected. Saving…'); await saveToGitHub(false);
+  }catch(err){ Object.assign(gh,prev); flash('ghMsg',err.message||'Could not reach GitHub.',true); } });
+setInterval(()=>{ if(STANDALONE&&!sync.busy) renderSync(); },60000);
+
 /* ---------- boot ---------- */
-function render(){ saveLocal(); renderMethod(); renderTiles(); renderRanges(); renderHead(); renderChart(); renderTable(); leave(); }
+function render(){ saveLocal(); renderSync(); renderMethod(); renderTiles(); renderRanges(); renderHead(); renderChart(); renderTable(); leave(); }
 let rt; new ResizeObserver(()=>{ clearTimeout(rt); rt=setTimeout(renderChart,60); }).observe(document.getElementById('cwrap'));
 document.getElementById('zFull').innerHTML=ICON.expand;
 const booted={};
 if (STANDALONE){
   let loc=null; try{ loc=JSON.parse(localStorage.getItem(LOCAL_KEY)||'null'); }catch(e){}
-  applyState(loc && loc.version===(BAKED.version||0) ? loc : BAKED);
-  document.getElementById('bSaveFile').hidden=false; document.getElementById('bCsv').hidden=false;
-  document.getElementById('bSaveFile').addEventListener('click',saveDashboardFile);
+  applyState(BAKED); sync.hash=hashStr(stateJSON());               // "clean" = what the file itself carries
+  if (loc && loc.version===(BAKED.version||0)){ applyState(loc); sync.savedAt=loc.base||null; if(loc.synced) sync.hash=loc.synced; }
+  document.getElementById('bCsv').hidden=false;
+  // the shared copy on GitHub wins unless this browser has changes that haven't been saved there yet
+  fetchRemote().then(r=>{ if(!r) { sync.offline=true; renderSync(); return; }
+    if(r.missing){ renderSync(); return; }
+    const d=r.data||{};
+    if(!isDirty()) applyRemote(d);
+    else if((d.savedAt||null)!==sync.savedAt) sync.conflict=d;
+    renderSync();
+  }).catch(()=>{ sync.offline=true; renderSync(); });
 }
 rebuildOrder();
 render();
