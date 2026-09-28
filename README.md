@@ -2,7 +2,7 @@
 
 A single-page dashboard for commodity prices — copper, lithium carbonate, WTI and Brent crude — plus a section for every Excel sheet you import.
 
-**Live page:** https://YOUR-USERNAME.github.io/commodity-tracker/
+**Live page:** https://eye-am-ashutosh.github.io/commodity-dashboard/
 
 ## What it does
 
@@ -12,13 +12,15 @@ A single-page dashboard for commodity prices — copper, lithium carbonate, WTI 
 - Excel-style price table you can copy into Excel or download as CSV
 - **Import Excel** (.xlsx, .xls, .csv): each sheet becomes its own section, or is added to an existing one
 
-## Updating the published data
+## Saving data for everyone
 
-1. Open the live page, import your sheets or add entries.
-2. Click **Save dashboard file** — it downloads a copy with your data inside.
-3. Rename that file to `index.html`, upload it here (**Add file → Upload files**) and commit.
+Prices you import or add are stored in `data.json` in this repository, so everyone who opens the link sees the same data.
 
-Changes made by visitors are saved only in their own browser; the published page changes only when a new `index.html` is uploaded.
+1. Open the live page and import your sheets or add entries — the header shows **Unsaved changes**.
+2. Click **Save to GitHub**. The first time, create a fine-grained token with **Contents: Read and write** on this repository only, and paste it in (it stays in your browser).
+3. The header changes to **Saved to GitHub** and the data is committed to `data.json`.
+
+Visitors without a token can view and explore everything; their own edits stay in their browser.
 
 ## Data sources
 
